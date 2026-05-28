@@ -1,4 +1,4 @@
-# astrace
+# asterism
 
 Reconstruct and inspect Asterisk calls from log files. Built for engineers who debug telephony in production and are tired of reading raw `full` logs at 3 a.m.
 
@@ -6,7 +6,7 @@ Reconstruct and inspect Asterisk calls from log files. Built for engineers who d
 
 ## What it does
 
-`astrace` reads Asterisk's log files, CDR, and CEL data, then groups events by `linkedid` to produce a navigable timeline of what happened during a call — which channels were created, which dialplan applications ran, when bridges formed, which SIP responses came back, and why the call ended.
+`asterism` reads Asterisk's log files, CDR, and CEL data, then groups events by `linkedid` to produce a navigable timeline of what happened during a call — which channels were created, which dialplan applications ran, when bridges formed, which SIP responses came back, and why the call ended.
 
 It is designed for post-mortem analysis ("the call at 14:32 dropped — what happened?") rather than live monitoring.
 
@@ -14,7 +14,7 @@ It is designed for post-mortem analysis ("the call at 14:32 dropped — what hap
 
 Asterisk produces excellent diagnostic information, but spread across several files in formats that don't talk to each other. Reconstructing a single call today means grepping `full` for the right `[C-xxxxxxxx]`, cross-referencing CDR rows by `uniqueid`, decoding CEL events, and matching SIP signaling by call-id — all by hand.
 
-`astrace` does this mechanically and outputs a structured view of the call. Nothing more.
+`asterism` does this mechanically and outputs a structured view of the call. Nothing more.
 
 ## Status
 
@@ -39,7 +39,7 @@ Current capabilities:
 ## Installation
 
 ```
-go install github.com/<your-user>/astrace/cmd/astrace@latest
+go install github.com/<your-user>/asterism/cmd/asterism@latest
 ```
 
 Or download a release binary from the releases page (none yet).
@@ -49,7 +49,7 @@ Or download a release binary from the releases page (none yet).
 Analyze a single call by `linkedid`:
 
 ```
-astrace analyze --log /var/log/asterisk/full \
+asterism analyze --log /var/log/asterisk/full \
                 --cdr /var/log/asterisk/cdr-csv/Master.csv \
                 --linkedid 1715275431.42
 ```
@@ -59,12 +59,12 @@ Output is a structured text timeline. Add `--format html` to generate a self-con
 For more options:
 
 ```
-astrace --help
+asterism --help
 ```
 
 ## How it works
 
-`astrace` is a four-stage pipeline:
+`asterism` is a four-stage pipeline:
 
 1. **Ingestion** reads raw files from disk (no daemon, no live capture yet)
 2. **Parsing** turns each source format into typed events
@@ -73,9 +73,9 @@ astrace --help
 
 The internals are documented in [`docs/architecture.md`](docs/architecture.md).
 
-## What `astrace` is not
+## What `asterism` is not
 
-- Not a replacement for `sngrep`, Wireshark, or HEP capture — those operate on the wire, `astrace` operates on logs
+- Not a replacement for `sngrep`, Wireshark, or HEP capture — those operate on the wire, `asterism` operates on logs
 - Not a CDR billing system
 - Not a real-time monitoring dashboard
 - Not affiliated with Sangoma, Digium, or the Asterisk project
