@@ -268,12 +268,12 @@ likely to hide.
 Production CEL/CDR logs rotate daily. Users need to analyze a week of calls
 without manually concatenating files.
 
-- [ ] Accept multiple positional CEL arguments: `asterism analyze *.csv`
-- [ ] Accept a directory: `asterism analyze --cel-dir /var/log/asterisk/cel-custom/`
-- [ ] Time-window deduplication: same uniqueid appearing in two rotated files
+- [x] Accept multiple positional CEL arguments: `asterism analyze *.csv`
+- [x] Accept a directory: `asterism analyze --cel-dir /var/log/asterisk/cel-custom/`
+- [x] Time-window deduplication: same uniqueid appearing in two rotated files
       is merged, not doubled
-- [ ] Aggregate `--stats` across all files combined
-- [ ] Progress indicator (file count / event count) when processing many files
+- [x] Aggregate `--stats` across all files combined
+- [x] Progress indicator (file count / event count) when processing many files
 
 ---
 

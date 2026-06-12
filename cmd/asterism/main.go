@@ -2,7 +2,7 @@
 //
 // Usage:
 //
-//	asterism analyze [flags] <cel-csv-file>
+//	asterism analyze [flags] <cel-csv-file> [<cel-csv-file>...]
 //
 // CEL is the required input. An optional CDR Master.csv enriches each call's
 // header with disposition/duration/billsec. Full log integration arrives in
@@ -13,6 +13,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -30,10 +32,12 @@ import (
 const usage = `asterism - reconstruct Asterisk calls from CEL log files
 
 Usage:
-  asterism analyze [flags] <cel-csv-file>
+  asterism analyze [flags] <cel-csv-file> [<cel-csv-file>...]
+  asterism analyze [flags] --cel-dir <directory>
 
 Flags:
   --cdr <path>              CDR Master.csv to merge disposition/duration/billsec
+  --cel-dir <path>          directory of CEL CSV files to merge (reads all *.csv)
   --format text|json|html|csv  output format (default: text)
   --output <path>           write output to file instead of stdout
   --no-color                disable ANSI colors in text output
@@ -61,6 +65,8 @@ Flags:
 
 Examples:
   asterism analyze cel.csv
+  asterism analyze monday.csv tuesday.csv wednesday.csv
+  asterism analyze --cel-dir /var/log/asterisk/cel-custom/
   asterism analyze --cdr Master.csv cel.csv
   asterism analyze --format json cel.csv
   asterism analyze --format html --output report.html --full-log full cel.csv
@@ -83,33 +89,33 @@ func main() {
 	fs := flag.NewFlagSet("analyze", flag.ExitOnError)
 	fs.Usage = func() { fmt.Fprint(os.Stderr, usage) }
 
-	cdrPath        := fs.String("cdr", "", "")
-	format         := fs.String("format", "text", "")
-	outputPath     := fs.String("output", "", "")
-	noColor        := fs.Bool("no-color", false, "")
-	ladder         := fs.Bool("ladder", false, "")
-	linkedID       := fs.String("linkedid", "", "")
-	channel        := fs.String("channel", "", "")
-	extension      := fs.String("extension", "", "")
-	eventTypeStr   := fs.String("event-type", "", "")
-	fromStr        := fs.String("from", "", "")
-	toStr          := fs.String("to", "", "")
-	minDurStr      := fs.String("min-duration", "", "")
-	maxDurStr      := fs.String("max-duration", "", "")
-	hangupCause    := fs.String("hangup-cause", "", "")
-	celColumnsStr  := fs.String("cel-columns", "", "")
-	skipBad        := fs.Bool("skip-bad-lines", false, "")
-	statsMode      := fs.Bool("stats", false, "")
-	fullLogPath    := fs.String("full-log", "", "")
+	cdrPath       := fs.String("cdr", "", "")
+	celDir        := fs.String("cel-dir", "", "")
+	format        := fs.String("format", "text", "")
+	outputPath    := fs.String("output", "", "")
+	noColor       := fs.Bool("no-color", false, "")
+	ladder        := fs.Bool("ladder", false, "")
+	linkedID      := fs.String("linkedid", "", "")
+	channel       := fs.String("channel", "", "")
+	extension     := fs.String("extension", "", "")
+	eventTypeStr  := fs.String("event-type", "", "")
+	fromStr       := fs.String("from", "", "")
+	toStr         := fs.String("to", "", "")
+	minDurStr     := fs.String("min-duration", "", "")
+	maxDurStr     := fs.String("max-duration", "", "")
+	hangupCause   := fs.String("hangup-cause", "", "")
+	celColumnsStr := fs.String("cel-columns", "", "")
+	skipBad       := fs.Bool("skip-bad-lines", false, "")
+	statsMode     := fs.Bool("stats", false, "")
+	fullLogPath   := fs.String("full-log", "", "")
 
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		os.Exit(2)
 	}
-	if fs.NArg() != 1 {
+	if fs.NArg() == 0 && *celDir == "" {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
 	}
-	celPath := fs.Arg(0)
 
 	if *format != "text" && *format != "json" && *format != "html" && *format != "csv" {
 		fmt.Fprintf(os.Stderr, "asterism: --format must be text, json, html, or csv\n")
@@ -117,25 +123,26 @@ func main() {
 	}
 
 	if err := run(runConfig{
-		celPath:      celPath,
-		cdrPath:      *cdrPath,
-		fullLogPath:  *fullLogPath,
-		format:       *format,
-		outputPath:   *outputPath,
-		noColor:      *noColor,
-		showLadder:   *ladder,
-		linkedID:     *linkedID,
-		channel:      *channel,
-		extension:    *extension,
-		eventTypeStr: *eventTypeStr,
-		fromStr:      *fromStr,
-		toStr:        *toStr,
-		minDurStr:    *minDurStr,
-		maxDurStr:    *maxDurStr,
+		celPaths:      fs.Args(),
+		celDir:        *celDir,
+		cdrPath:       *cdrPath,
+		fullLogPath:   *fullLogPath,
+		format:        *format,
+		outputPath:    *outputPath,
+		noColor:       *noColor,
+		showLadder:    *ladder,
+		linkedID:      *linkedID,
+		channel:       *channel,
+		extension:     *extension,
+		eventTypeStr:  *eventTypeStr,
+		fromStr:       *fromStr,
+		toStr:         *toStr,
+		minDurStr:     *minDurStr,
+		maxDurStr:     *maxDurStr,
 		hangupCause:   *hangupCause,
 		celColumnsStr: *celColumnsStr,
 		skipBadLines:  *skipBad,
-		statsMode:    *statsMode,
+		statsMode:     *statsMode,
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "asterism: %v\n", err)
 		os.Exit(1)
@@ -143,65 +150,89 @@ func main() {
 }
 
 type runConfig struct {
-	celPath      string
-	cdrPath      string
-	format       string
-	outputPath   string
-	noColor      bool
-	showLadder   bool
-	linkedID     string
-	channel      string
-	extension    string
-	eventTypeStr string
-	fromStr      string
-	toStr        string
-	minDurStr    string
-	maxDurStr    string
+	celPaths      []string
+	celDir        string
+	cdrPath       string
+	format        string
+	outputPath    string
+	noColor       bool
+	showLadder    bool
+	linkedID      string
+	channel       string
+	extension     string
+	eventTypeStr  string
+	fromStr       string
+	toStr         string
+	minDurStr     string
+	maxDurStr     string
 	hangupCause   string
 	celColumnsStr string
 	fullLogPath   string
-	skipBadLines bool
-	statsMode    bool
+	skipBadLines  bool
+	statsMode     bool
 }
 
 func run(cfg runConfig) error {
-	// Parse CEL.
+	// Collect CEL file paths.
+	paths := append([]string(nil), cfg.celPaths...)
+	if cfg.celDir != "" {
+		dirPaths, err := celPathsFromDir(cfg.celDir)
+		if err != nil {
+			return err
+		}
+		paths = append(paths, dirPaths...)
+	}
+	if len(paths) == 0 {
+		return fmt.Errorf("no CEL files specified")
+	}
+
+	// Parse CEL — merge events from all files.
 	var celCols []string
 	if cfg.celColumnsStr != "" {
 		celCols = splitColumns(cfg.celColumnsStr)
 	}
 
-	var events []model.Event
-	if cfg.skipBadLines {
-		var skipped int
-		var err error
-		if len(celCols) > 0 {
-			events, skipped, err = cel.ParseFileLenientWithColumns(cfg.celPath, celCols)
+	multi := len(paths) > 1
+	var allEvents []model.Event
+	totalSkipped := 0
+	for i, path := range paths {
+		if multi {
+			fmt.Fprintf(os.Stderr, "asterism: reading %s (%d/%d)\n",
+				filepath.Base(path), i+1, len(paths))
+		}
+		if cfg.skipBadLines {
+			evs, skipped, err := parseCELLenient(path, celCols)
+			if err != nil {
+				return err
+			}
+			totalSkipped += skipped
+			allEvents = append(allEvents, evs...)
 		} else {
-			events, skipped, err = cel.ParseFileLenient(cfg.celPath)
-		}
-		if err != nil {
-			return err
-		}
-		if skipped > 0 {
-			fmt.Fprintf(os.Stderr, "asterism: skipped %d malformed CEL row(s)\n", skipped)
-		}
-	} else {
-		var err error
-		if len(celCols) > 0 {
-			events, err = cel.ParseFileWithColumns(cfg.celPath, celCols)
-		} else {
-			events, err = cel.ParseFile(cfg.celPath)
-		}
-		if err != nil {
-			return err
+			evs, err := parseCELStrict(path, celCols)
+			if err != nil {
+				return err
+			}
+			allEvents = append(allEvents, evs...)
 		}
 	}
-	if len(events) == 0 {
+	if totalSkipped > 0 {
+		fmt.Fprintf(os.Stderr, "asterism: skipped %d malformed CEL row(s)\n", totalSkipped)
+	}
+
+	// Deduplicate events that appear in overlapping files.
+	if multi {
+		before := len(allEvents)
+		allEvents = deduplicateEvents(allEvents)
+		if dupes := before - len(allEvents); dupes > 0 {
+			fmt.Fprintf(os.Stderr, "asterism: removed %d duplicate event(s)\n", dupes)
+		}
+	}
+
+	if len(allEvents) == 0 {
 		return fmt.Errorf("no events found in input")
 	}
 
-	calls := correlate.ByLinkedID(events)
+	calls := correlate.ByLinkedID(allEvents)
 
 	// Parse and attach CDR if provided.
 	if cfg.cdrPath != "" {
@@ -231,7 +262,6 @@ func run(cfg runConfig) error {
 		}
 		calls = fulllog.AttachLog(calls, logLines)
 
-		// SIP messages come from the same file; parse in a second pass.
 		sipMsgs, err := sip.ParseFile(cfg.fullLogPath, 0)
 		if err != nil {
 			return err
@@ -333,6 +363,72 @@ func run(cfg runConfig) error {
 		}
 	}
 	return nil
+}
+
+func parseCELStrict(path string, cols []string) ([]model.Event, error) {
+	var evs []model.Event
+	var err error
+	if len(cols) > 0 {
+		evs, err = cel.ParseFileWithColumns(path, cols)
+	} else {
+		evs, err = cel.ParseFile(path)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", filepath.Base(path), err)
+	}
+	return evs, nil
+}
+
+func parseCELLenient(path string, cols []string) ([]model.Event, int, error) {
+	if len(cols) > 0 {
+		return cel.ParseFileLenientWithColumns(path, cols)
+	}
+	return cel.ParseFileLenient(path)
+}
+
+// celPathsFromDir returns all *.csv files in dir, sorted alphabetically.
+// Sorting by name yields chronological order when files are date-named
+// (e.g. cel-2026-06-10.csv, cel-2026-06-11.csv).
+func celPathsFromDir(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading --cel-dir %s: %w", dir, err)
+	}
+	var paths []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if strings.HasSuffix(strings.ToLower(e.Name()), ".csv") {
+			paths = append(paths, filepath.Join(dir, e.Name()))
+		}
+	}
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("no .csv files found in %s", dir)
+	}
+	sort.Strings(paths)
+	return paths, nil
+}
+
+// deduplicateEvents removes events that are identical by (UniqueID, Type,
+// Timestamp). This handles overlapping log rotations where the same event
+// appears in two consecutive files.
+func deduplicateEvents(events []model.Event) []model.Event {
+	type key struct {
+		uniqueID string
+		typ      model.EventType
+		ts       int64
+	}
+	seen := make(map[key]struct{}, len(events))
+	out := make([]model.Event, 0, len(events))
+	for _, e := range events {
+		k := key{e.UniqueID, e.Type, e.Timestamp.UnixNano()}
+		if _, dup := seen[k]; !dup {
+			seen[k] = struct{}{}
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 func splitColumns(s string) []string {

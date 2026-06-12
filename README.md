@@ -40,6 +40,8 @@ Current capabilities (v0.4.0):
 - [x] Aggregate statistics (`--stats`)
 - [x] Rich filters: linkedid, channel, extension, date range, duration, hangup cause
 - [x] Configurable CEL column layout (`--cel-columns`) for non-standard `cel_custom.conf`
+- [x] Multi-file and batch mode: multiple positional args or `--cel-dir <directory>`
+- [x] Duplicate event detection across overlapping rotated log files
 
 ## Requirements
 
