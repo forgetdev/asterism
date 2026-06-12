@@ -170,6 +170,20 @@ func (r *textRenderer) renderCall(call model.Call) error {
 			fmt.Fprintf(r.w, "  Codecs:       %s\n", strings.Join(codecs, ", "))
 		}
 	}
+	if q := call.QueueInfo; q != nil {
+		var parts []string
+		parts = append(parts, q.Name)
+		if q.WaitTime > 0 {
+			parts = append(parts, "wait="+q.WaitTime.String())
+		}
+		if q.TalkTime > 0 {
+			parts = append(parts, "talk="+q.TalkTime.String())
+		}
+		if q.Agent != "" {
+			parts = append(parts, "agent="+q.Agent)
+		}
+		fmt.Fprintf(r.w, "  Queue:        %s\n", strings.Join(parts, "  "))
+	}
 	if warns := sip.Diagnose(call); len(warns) > 0 {
 		for _, w := range warns {
 			fmt.Fprintf(r.w, "  %-14s%s\n", r.colorWarn("! "+w.Category+":"), w.Message)
@@ -461,6 +475,28 @@ func countVisible(events []model.Event) int {
 		}
 	}
 	return n
+}
+
+// TextRegistrationFailures writes a summary section of registration failures
+// to w. Called after the main call output when a full log is provided.
+func TextRegistrationFailures(w io.Writer, failures []model.RegistrationFailure, opts TextOptions) error {
+	r := &textRenderer{w: w, color: opts.Color}
+	fmt.Fprintf(w, "\n%s\n", r.bold("═══════════════════════════════════════════════════════════════════"))
+	fmt.Fprintf(w, "%s  (%d)\n", r.bold("Registration Failures"), len(failures))
+	fmt.Fprintf(w, "%s\n", r.bold("───────────────────────────────────────────────────────────────────"))
+	for _, f := range failures {
+		endpoint := f.Endpoint
+		if endpoint == "" {
+			endpoint = "unknown"
+		}
+		fmt.Fprintf(w, "  %s  endpoint=%-8s  src=%-22s  %s\n",
+			f.Timestamp.Format("15:04:05"),
+			endpoint,
+			f.SourceIP,
+			r.colorWarn(f.Reason),
+		)
+	}
+	return nil
 }
 
 // formatExtra decodes the event's Extra JSON and renders only the fields

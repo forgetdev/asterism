@@ -255,12 +255,14 @@ func run(cfg runConfig) error {
 	}
 
 	// Parse and attach full log if provided.
+	var regFailures []model.RegistrationFailure
 	if cfg.fullLogPath != "" {
 		logLines, err := fulllog.ParseFile(cfg.fullLogPath, 0)
 		if err != nil {
 			return err
 		}
 		calls = fulllog.AttachLog(calls, logLines)
+		calls = fulllog.AttachQueueInfo(calls)
 
 		sipMsgs, err := sip.ParseFile(cfg.fullLogPath, 0)
 		if err != nil {
@@ -268,6 +270,11 @@ func run(cfg runConfig) error {
 		}
 		if len(sipMsgs) > 0 {
 			calls = sip.AttachSIP(calls, sipMsgs)
+		}
+
+		regFailures, err = fulllog.ParseRegistrationFailures(cfg.fullLogPath)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -360,6 +367,11 @@ func run(cfg runConfig) error {
 	default:
 		if err := render.Text(out, calls, opts); err != nil {
 			return fmt.Errorf("rendering: %w", err)
+		}
+		if len(regFailures) > 0 {
+			if err := render.TextRegistrationFailures(out, regFailures, opts); err != nil {
+				return fmt.Errorf("rendering: %w", err)
+			}
 		}
 	}
 	return nil

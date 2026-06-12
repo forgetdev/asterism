@@ -42,6 +42,8 @@ Current capabilities (v0.4.0):
 - [x] Configurable CEL column layout (`--cel-columns`) for non-standard `cel_custom.conf`
 - [x] Multi-file and batch mode: multiple positional args or `--cel-dir <directory>`
 - [x] Duplicate event detection across overlapping rotated log files
+- [x] Queue call detection: name, wait time, talk time, and agent from CEL + full log
+- [x] Registration failure detection: failed REGISTER attempts shown after call output
 
 ## Requirements
 

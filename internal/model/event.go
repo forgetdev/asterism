@@ -74,6 +74,7 @@ type Call struct {
 	CDRs        []CDR
 	LogLines    []LogLine
 	SIPMessages []SIPMessage
+	QueueInfo   *QueueInfo // non-nil when the call passed through an Asterisk queue
 }
 
 // PrimaryCDR returns the call's top-level CDR — the record whose UniqueID

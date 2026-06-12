@@ -1,0 +1,20 @@
+[Jun 12 18:03:01] VERBOSE[19982] res_pjsip/pjsip_configuration.c: Endpoint 1001 is now Unreachable
+[Jun 12 18:03:01] NOTICE[20001] res_pjsip/pjsip_distributor.c: Request 'REGISTER' from '"teste" <sip:1001@163.176.200.107>' failed for '170.81.69.34:43931' (callid: a13e00923ee5414984e11b9b9da84f02) - Failed to authenticate
+[Jun 12 18:03:08] VERBOSE[20001] res_pjsip_registrar.c: Added contact 'sip:1001@170.81.69.34:43931;ob;x-ast-orig-host=192.168.1.8:43931' to AOR '1001' with expiration of 300 seconds
+[Jun 12 18:03:08] VERBOSE[19982] res_pjsip/pjsip_configuration.c: Endpoint 1001 is now Reachable
+
+[Jun 12 18:39:17] VERBOSE[2078096][C-00000005] pbx.c: Executing [700@internal:1] NoOp("PJSIP/1003-00000009", "Chamada entrando na fila suporte - origem 1003") in new stack
+[Jun 12 18:39:17] VERBOSE[2078096][C-00000005] pbx.c: Executing [700@internal:2] Answer("PJSIP/1003-00000009", "") in new stack
+[Jun 12 18:39:17] VERBOSE[2078096][C-00000005] pbx.c: Executing [700@internal:3] Queue("PJSIP/1003-00000009", "suporte,t,,,30") in new stack
+[Jun 12 18:39:17] VERBOSE[2078096][C-00000005] res_musiconhold.c: Started music on hold, class 'default', on channel 'PJSIP/1003-00000009'
+[Jun 12 18:39:17] VERBOSE[2078096][C-00000005] app_queue.c: Called PJSIP/1001
+[Jun 12 18:39:17] VERBOSE[2078096][C-00000005] app_queue.c: PJSIP/1001-0000000a connected line has changed. Saving it until answer for PJSIP/1003-00000009
+[Jun 12 18:39:17] VERBOSE[2078096][C-00000005] app_queue.c: PJSIP/1001-0000000a is ringing
+[Jun 12 18:39:20] VERBOSE[2078096][C-00000005] app_queue.c: PJSIP/1001-0000000a answered PJSIP/1003-00000009
+[Jun 12 18:39:20] VERBOSE[2078096][C-00000005] res_musiconhold.c: Stopped music on hold on PJSIP/1003-00000009
+[Jun 12 18:39:20] VERBOSE[2078106][C-00000005] bridge_channel.c: Channel PJSIP/1001-0000000a joined 'simple_bridge' basic-bridge <58d9e4e8-5084-4d27-8630-dd0cd3a28bf4>
+[Jun 12 18:39:20] VERBOSE[2078096][C-00000005] bridge_channel.c: Channel PJSIP/1003-00000009 joined 'simple_bridge' basic-bridge <58d9e4e8-5084-4d27-8630-dd0cd3a28bf4>
+[Jun 12 18:39:49] VERBOSE[2078106][C-00000005] bridge_channel.c: Channel PJSIP/1001-0000000a left 'simple_bridge' basic-bridge <58d9e4e8-5084-4d27-8630-dd0cd3a28bf4>
+[Jun 12 18:39:49] VERBOSE[2078096][C-00000005] bridge_channel.c: Channel PJSIP/1003-00000009 left 'simple_bridge' basic-bridge <58d9e4e8-5084-4d27-8630-dd0cd3a28bf4>
+[Jun 12 18:39:49] VERBOSE[2078096][C-00000005] pbx.c: Spawn extension (internal, 700, 3) exited non-zero on 'PJSIP/1003-00000009'
+

@@ -285,15 +285,12 @@ Carry the deferred items from v0.1.0 and v0.2.0 plus queue analysis.
 - [ ] Call outcome inference from full log alone (no CEL/CDR required)
 - [ ] One-way audio detection: parse RTP stats lines from the full log and flag
       calls where one direction has zero packets
-- [ ] Registration failure detection: parse REGISTER SIP dialogs and surface
-      401/403/timeout responses
+- [x] Registration failure detection: parse pjsip_distributor NOTICE lines and
+      surface failed REGISTER attempts as a section after call output
 
 ### Queue analysis
-Asterisk queue calls emit specific CEL events (AGENT_CONNECT, AGENT_COMPLETE,
-ATTENDEDTRANSFER). A queue-aware view would add:
-- [ ] Detect queue calls by CEL app=Queue events
-- [ ] Show queue wait time (CHAN_START → AGENT_CONNECT)
-- [ ] Show agent who answered and talk time
+- [x] Detect queue calls by CEL App=Queue events
+- [x] Show queue name, wait time, talk time, and agent in call header
 - [ ] Show abandoned calls (entered queue, never connected)
 - [ ] Queue summary in `--stats`: average wait, abandon rate
 
