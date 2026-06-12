@@ -226,7 +226,7 @@ be wrong after the transfer point.
 ### Infrastructure (deferred from v0.0.3 infra block)
 - [x] GitHub Actions: run `go test ./...` and `go vet` on every PR
 - [x] Add `golangci-lint` to CI
-- [ ] Build status badge in README
+- [x] Build status badge in README
 - [x] `docs/asterisk-setup.md`: how to configure CEL, CDR, and full log
 
 ---

@@ -1,5 +1,7 @@
 # asterism ⁂
 
+[![CI](https://github.com/forgetdev/asterism/actions/workflows/ci.yml/badge.svg)](https://github.com/forgetdev/asterism/actions/workflows/ci.yml)
+
 Reconstruct Asterisk calls from CEL log files. Built for engineers who debug
 telephony in production and are tired of reading raw `full` logs at 3 a.m.
 
@@ -7,8 +9,6 @@ telephony in production and are tired of reading raw `full` logs at 3 a.m.
 > not a constellation, but a recognizable shape made of points of light.
 > This tool finds the asterism in your Asterisk logs: the pattern of
 > events that, together, tell the story of a single call.*
-
-> Status: early development. v0.0.1. APIs and flags will change.
 
 ## What it does
 
@@ -26,17 +26,19 @@ This is a personal project in active development. It is not production-ready
 and should not be relied on for compliance, billing, or any decision-making
 process. The output format will change between versions.
 
-Current capabilities (v0.0.1):
+Current capabilities (v0.4.0):
 
-- [x] Parse CEL CSV into typed events
-- [x] Correlate events by linkedid
-- [x] Text report to stdout with call timeline
-- [ ] Parse CDR CSV
-- [ ] Parse `full` log for dialplan execution detail
-- [ ] HTML output with ladder diagram
-- [ ] Live tail mode
-- [ ] Hangup cause translation (Q.850)
-- [ ] Diagnostic inference (codec mismatch hints, native_rtp warnings)
+- [x] Parse CEL and CDR CSV into typed events
+- [x] Correlate events by linkedid; attach CDR disposition/billsec
+- [x] Text, JSON, HTML, and CSV output
+- [x] SIP ladder diagram (`--ladder`, always shown in HTML reports)
+- [x] Blind and attended transfer awareness
+- [x] Full log correlation — dialplan execution alongside CEL timeline
+- [x] SIP signaling analysis from PJSIP verbose log
+- [x] Hangup cause translation (Q.850)
+- [x] Codec negotiation and RTP setup failure diagnostics
+- [x] Aggregate statistics (`--stats`)
+- [x] Rich filters: linkedid, channel, extension, date range, duration, hangup cause
 
 ## Requirements
 
