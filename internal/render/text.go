@@ -1,6 +1,8 @@
 // Package render produces human-readable output from Call data.
 //
-// v0 supports only text rendering to stdout. HTML and ladder diagrams come later.
+// Text produces a terminal-friendly call timeline. JSON produces a
+// machine-readable representation. Both share the same helper functions
+// for extracting call-level summary fields.
 package render
 
 import (
@@ -13,86 +15,164 @@ import (
 	"github.com/forgetdev/asterism/internal/q850"
 )
 
+// ANSI color codes used by the text renderer.
+const (
+	ansiReset  = "\033[0m"
+	ansiBold   = "\033[1m"
+	ansiDim    = "\033[2m"
+	ansiRed    = "\033[31m"
+	ansiGreen  = "\033[32m"
+	ansiYellow = "\033[33m"
+	ansiBlue   = "\033[34m"
+	ansiCyan   = "\033[36m"
+)
+
+// TextOptions controls text rendering behaviour.
+type TextOptions struct {
+	Color bool // enable ANSI color codes
+}
+
 // Text writes a textual summary of one or more calls to w.
 // Each call is rendered as a header block followed by its event timeline.
 //
 // The format is designed for terminal reading at 80+ columns. We keep it
 // close to what one would write by hand when debugging a call from logs —
 // offset, event type, channel, then key details. Not optimized for machine
-// parsing; for that we will add a JSON renderer later.
-func Text(w io.Writer, calls []model.Call) error {
+// parsing; use JSON for that.
+func Text(w io.Writer, calls []model.Call, opts TextOptions) error {
+	r := &textRenderer{w: w, color: opts.Color}
 	for i, call := range calls {
 		if i > 0 {
 			if _, err := fmt.Fprintln(w); err != nil {
 				return err
 			}
 		}
-		if err := renderCall(w, call); err != nil {
+		if err := r.renderCall(call); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func renderCall(w io.Writer, call model.Call) error {
+// textRenderer holds the writer and options so they don't need to be threaded
+// through every helper call.
+type textRenderer struct {
+	w     io.Writer
+	color bool
+}
+
+func (r *textRenderer) bold(s string) string {
+	if !r.color {
+		return s
+	}
+	return ansiBold + s + ansiReset
+}
+
+func (r *textRenderer) dim(s string) string {
+	if !r.color {
+		return s
+	}
+	return ansiDim + s + ansiReset
+}
+
+func (r *textRenderer) colorResult(result string) string {
+	if !r.color {
+		return result
+	}
+	var code string
+	switch result {
+	case "ANSWERED":
+		code = ansiGreen
+	case "BUSY", "NO ANSWER":
+		code = ansiYellow
+	case "FAILED", "CONGESTION":
+		code = ansiRed
+	default:
+		return result
+	}
+	return code + result + ansiReset
+}
+
+func (r *textRenderer) colorEventType(t model.EventType) string {
+	s := string(t)
+	if !r.color {
+		return s
+	}
+	var code string
+	switch t {
+	case model.EventChanStart, model.EventChanEnd:
+		code = ansiCyan
+	case model.EventAnswer:
+		code = ansiGreen
+	case model.EventHangup:
+		code = ansiYellow
+	case model.EventBridgeEnter, model.EventBridgeExit:
+		code = ansiBlue
+	default:
+		return s
+	}
+	return code + s + ansiReset
+}
+
+func (r *textRenderer) renderCall(call model.Call) error {
 	channels := call.Channels()
 
-	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
-	fmt.Fprintf(w, "Call linkedid=%s\n", call.LinkedID)
-	fmt.Fprintf(w, "  Start:        %s\n", call.StartTime().Format("2006-01-02 15:04:05.000"))
-	fmt.Fprintf(w, "  Duration:     %s\n", effectiveDuration(call).Round(time.Millisecond))
+	fmt.Fprintf(r.w, "%s\n", r.bold("═══════════════════════════════════════════════════════════════════"))
+	fmt.Fprintf(r.w, "%s\n", r.bold("Call linkedid="+call.LinkedID))
+	fmt.Fprintf(r.w, "  Start:        %s\n", call.StartTime().Format("2006-01-02 15:04:05.000"))
+	fmt.Fprintf(r.w, "  Duration:     %s\n", effectiveDuration(call).Round(time.Millisecond))
 	if result := callResult(call); result != "" {
-		fmt.Fprintf(w, "  Result:       %s\n", result)
+		fmt.Fprintf(r.w, "  Result:       %s\n", r.colorResult(result))
 	}
 	if caller := callCaller(call); caller != "" {
-		fmt.Fprintf(w, "  Caller:       %s\n", caller)
+		fmt.Fprintf(r.w, "  Caller:       %s\n", caller)
 	}
 	if callee := callCallee(call); callee != "" {
-		fmt.Fprintf(w, "  Callee:       %s\n", callee)
+		fmt.Fprintf(r.w, "  Callee:       %s\n", callee)
 	}
 	if bs := callBillSec(call); bs > 0 {
-		fmt.Fprintf(w, "  BillSec:      %s\n", bs.Round(time.Second))
+		fmt.Fprintf(r.w, "  BillSec:      %s\n", bs.Round(time.Second))
 	}
 	if ev := primaryHangup(call); ev != nil {
 		if data, err := model.DecodeExtra(ev.Extra); err == nil {
 			if data.HangupCauseSet {
-				fmt.Fprintf(w, "  HangupCause:  %s\n", q850.Describe(data.HangupCause))
+				fmt.Fprintf(r.w, "  HangupCause:  %s\n", q850.Describe(data.HangupCause))
 			}
 			if data.DialStatus != "" {
-				fmt.Fprintf(w, "  Dialstatus:   %s\n", data.DialStatus)
+				fmt.Fprintf(r.w, "  Dialstatus:   %s\n", data.DialStatus)
 			}
 		}
 	}
-	fmt.Fprintf(w, "  Channels:     %s\n", strings.Join(channels, ", "))
-	fmt.Fprintf(w, "  Events:       %d\n", countVisible(call.Events))
-	fmt.Fprintf(w, "───────────────────────────────────────────────────────────────────\n")
+	fmt.Fprintf(r.w, "  Channels:     %s\n", strings.Join(channels, ", "))
+	fmt.Fprintf(r.w, "  Events:       %d\n", countVisible(call.Events))
+	fmt.Fprintf(r.w, "%s\n", r.bold("───────────────────────────────────────────────────────────────────"))
 
 	callStart := call.StartTime()
 	for _, ev := range call.Events {
 		if ev.Type == model.EventLinkedIDEnd {
 			continue
 		}
-		renderEvent(w, ev, callStart)
+		r.renderEvent(ev, callStart)
 	}
 	return nil
 }
 
 // renderEvent prints a single event line, formatted with offset from call start.
 // Offset is more useful than absolute timestamp when scanning a call timeline.
-func renderEvent(w io.Writer, ev model.Event, callStart time.Time) {
+func (r *textRenderer) renderEvent(ev model.Event, callStart time.Time) {
 	offset := ev.Timestamp.Sub(callStart)
-	fmt.Fprintf(w, "  [+%-9s] %-14s %s",
-		formatOffset(offset),
-		ev.Type,
+	fmt.Fprintf(r.w, "  [%s] %-14s %s",
+		r.dim("+"+fmt.Sprintf("%-9s", formatOffset(offset))),
+		r.colorEventType(ev.Type),
 		ev.ChannelName,
 	)
 	if ev.AppName != "" {
-		fmt.Fprintf(w, "  %s(%s)", ev.AppName, cleanAppData(ev.AppData))
+		fmt.Fprintf(r.w, "  %s(%s)", ev.AppName, cleanAppData(ev.AppData))
 	}
 	if detail := formatExtra(ev); detail != "" {
-		fmt.Fprintf(w, "  %s", detail)
+		fmt.Fprintf(r.w, "  %s", detail)
 	}
-	fmt.Fprintln(w)
+	fmt.Fprintln(r.w)
 }
 
 // formatOffset renders a duration with adaptive precision. Events in a call
@@ -102,8 +182,6 @@ func renderEvent(w io.Writer, ev model.Event, callStart time.Time) {
 // everything else rounds to milliseconds.
 func formatOffset(d time.Duration) string {
 	if d < time.Millisecond {
-		// Show microseconds for tight clusters. time.Duration's String()
-		// already does this well below 1ms (e.g., "184µs", "478µs").
 		return d.String()
 	}
 	return d.Round(time.Millisecond).String()
@@ -224,7 +302,6 @@ func formatExtra(ev model.Event) string {
 	}
 	data, err := model.DecodeExtra(ev.Extra)
 	if err != nil {
-		// Malformed JSON: show the raw blob rather than losing it.
 		return ev.Extra
 	}
 

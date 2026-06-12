@@ -77,20 +77,20 @@ Dialstatus: BUSY
 
 ---
 
-## v0.0.4 — usability and filtering
+## v0.0.4 — usability and filtering — done
 
 ### Output options
-- [ ] JSON output: `--format json`
-- [ ] Colorized terminal output — MUST detect TTY (isatty) and support
+- [x] JSON output: `--format json`
+- [x] Colorized terminal output — MUST detect TTY (isatty) and support
       `--no-color`, or piping to a file fills it with ANSI codes
-- [ ] Filter by linkedid: `asterism analyze --linkedid 1779999013.2 cel.csv`
-- [ ] Filter by channel name
-- [ ] Filter by extension
-- [ ] Show only HANGUP events
-- [ ] Show only APP_START/APP_END events
+- [x] Filter by linkedid: `asterism analyze --linkedid 1779999013.2 cel.csv`
+- [x] Filter by channel name
+- [x] Filter by extension
+- [x] Show only HANGUP events
+- [x] Show only APP_START/APP_END events
 
 ### Robustness
-- [ ] `--skip-bad-lines`: tolerant mode that skips malformed CSV rows and
+- [x] `--skip-bad-lines`: tolerant mode that skips malformed CSV rows and
       reports a count at the end, instead of failing the whole parse.
       Production CEL data always has some dirt.
 

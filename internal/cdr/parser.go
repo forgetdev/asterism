@@ -74,6 +74,48 @@ func ParseFile(path string) ([]model.CDR, error) {
 	return Parse(f)
 }
 
+// ParseLenient reads CDR records from r, skipping any row that cannot be parsed
+// instead of returning an error. Returns records, skipped count, and any fatal I/O error.
+func ParseLenient(r io.Reader) ([]model.CDR, int, error) {
+	reader := csv.NewReader(r)
+	reader.FieldsPerRecord = -1
+	reader.LazyQuotes = true
+
+	var records []model.CDR
+	skipped := 0
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			skipped++
+			continue
+		}
+		if len(row) != expectedColumns {
+			skipped++
+			continue
+		}
+		rec, err := rowToCDR(row)
+		if err != nil {
+			skipped++
+			continue
+		}
+		records = append(records, rec)
+	}
+	return records, skipped, nil
+}
+
+// ParseFileLenient is a convenience wrapper for ParseLenient.
+func ParseFileLenient(path string) ([]model.CDR, int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, 0, fmt.Errorf("cdr: opening %s: %w", path, err)
+	}
+	defer f.Close()
+	return ParseLenient(f)
+}
+
 // rowToCDR converts an 18-field CSV row into a typed CDR.
 func rowToCDR(row []string) (model.CDR, error) {
 	start, err := parseCDRTime(row[9])
