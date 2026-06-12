@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/forgetdev/asterism/internal/cdr"
 	"github.com/forgetdev/asterism/internal/cel"
@@ -31,27 +32,37 @@ Usage:
   asterism analyze [flags] <cel-csv-file>
 
 Flags:
-  --cdr <path>             CDR Master.csv to merge disposition/duration/billsec
-  --format text|json|html  output format (default: text)
-  --output <path>          write output to file instead of stdout
-  --no-color               disable ANSI colors in text output
-  --ladder                 add ASCII SIP ladder diagram to text output
-  --linkedid <id>          show only the call with this linkedid
-  --channel <name>         show only calls containing this channel (substring)
-  --extension <ext>        show only calls with this extension in any event
-  --event-type <types>     show only events of these types, comma-separated
-                           e.g. HANGUP or APP_START,APP_END
-  --full-log <path>        Asterisk full log to correlate with call timelines
-  --skip-bad-lines         skip malformed CSV rows instead of aborting
-  --stats                  print aggregate statistics instead of call timelines
+  --cdr <path>              CDR Master.csv to merge disposition/duration/billsec
+  --format text|json|html|csv  output format (default: text)
+  --output <path>           write output to file instead of stdout
+  --no-color                disable ANSI colors in text output
+  --ladder                  add ASCII SIP ladder diagram to text output
+  --linkedid <id>           show only the call with this linkedid
+  --channel <name>          show only calls containing this channel (substring)
+  --extension <ext>         show only calls with this extension in any event
+  --event-type <types>      show only events of these types, comma-separated
+                            e.g. HANGUP or APP_START,APP_END
+  --from <timestamp>        show only calls starting at or after this time
+  --to <timestamp>          show only calls starting at or before this time
+                            timestamp format: "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
+  --min-duration <dur>      show only calls with duration >= this (e.g. 30s, 5m)
+  --max-duration <dur>      show only calls with duration <= this
+  --hangup-cause <cause>    show only calls with this hangup cause
+                            accepts a name ("NORMAL_CLEARING") or code ("16")
+  --full-log <path>         Asterisk full log to correlate with call timelines
+  --skip-bad-lines          skip malformed CSV rows instead of aborting
+  --stats                   print aggregate statistics instead of call timelines
 
 Examples:
   asterism analyze cel.csv
   asterism analyze --cdr Master.csv cel.csv
   asterism analyze --format json cel.csv
   asterism analyze --format html --output report.html --full-log full cel.csv
+  asterism analyze --format csv --output summary.csv --cdr Master.csv cel.csv
   asterism analyze --ladder --full-log full cel.csv
   asterism analyze --linkedid 1779999013.2 cel.csv
+  asterism analyze --from "2026-06-12 16:00:00" --to "2026-06-12 17:00:00" cel.csv
+  asterism analyze --min-duration 60s --hangup-cause NORMAL_CLEARING cel.csv
   asterism analyze --event-type HANGUP cel.csv
   asterism analyze --skip-bad-lines --cdr Master.csv cel.csv
   asterism analyze --stats --cdr Master.csv cel.csv
@@ -66,18 +77,23 @@ func main() {
 	fs := flag.NewFlagSet("analyze", flag.ExitOnError)
 	fs.Usage = func() { fmt.Fprint(os.Stderr, usage) }
 
-	cdrPath      := fs.String("cdr", "", "")
-	format       := fs.String("format", "text", "")
-	outputPath   := fs.String("output", "", "")
-	noColor      := fs.Bool("no-color", false, "")
-	ladder       := fs.Bool("ladder", false, "")
-	linkedID     := fs.String("linkedid", "", "")
-	channel      := fs.String("channel", "", "")
-	extension    := fs.String("extension", "", "")
-	eventTypeStr := fs.String("event-type", "", "")
-	skipBad      := fs.Bool("skip-bad-lines", false, "")
-	statsMode    := fs.Bool("stats", false, "")
-	fullLogPath  := fs.String("full-log", "", "")
+	cdrPath       := fs.String("cdr", "", "")
+	format        := fs.String("format", "text", "")
+	outputPath    := fs.String("output", "", "")
+	noColor       := fs.Bool("no-color", false, "")
+	ladder        := fs.Bool("ladder", false, "")
+	linkedID      := fs.String("linkedid", "", "")
+	channel       := fs.String("channel", "", "")
+	extension     := fs.String("extension", "", "")
+	eventTypeStr  := fs.String("event-type", "", "")
+	fromStr       := fs.String("from", "", "")
+	toStr         := fs.String("to", "", "")
+	minDurStr     := fs.String("min-duration", "", "")
+	maxDurStr     := fs.String("max-duration", "", "")
+	hangupCause   := fs.String("hangup-cause", "", "")
+	skipBad       := fs.Bool("skip-bad-lines", false, "")
+	statsMode     := fs.Bool("stats", false, "")
+	fullLogPath   := fs.String("full-log", "", "")
 
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		os.Exit(2)
@@ -88,8 +104,8 @@ func main() {
 	}
 	celPath := fs.Arg(0)
 
-	if *format != "text" && *format != "json" && *format != "html" {
-		fmt.Fprintf(os.Stderr, "asterism: --format must be text, json, or html\n")
+	if *format != "text" && *format != "json" && *format != "html" && *format != "csv" {
+		fmt.Fprintf(os.Stderr, "asterism: --format must be text, json, html, or csv\n")
 		os.Exit(2)
 	}
 
@@ -105,6 +121,11 @@ func main() {
 		channel:      *channel,
 		extension:    *extension,
 		eventTypeStr: *eventTypeStr,
+		fromStr:      *fromStr,
+		toStr:        *toStr,
+		minDurStr:    *minDurStr,
+		maxDurStr:    *maxDurStr,
+		hangupCause:  *hangupCause,
 		skipBadLines: *skipBad,
 		statsMode:    *statsMode,
 	}); err != nil {
@@ -124,6 +145,11 @@ type runConfig struct {
 	channel      string
 	extension    string
 	eventTypeStr string
+	fromStr      string
+	toStr        string
+	minDurStr    string
+	maxDurStr    string
+	hangupCause  string
 	fullLogPath  string
 	skipBadLines bool
 	statsMode    bool
@@ -195,9 +221,38 @@ func run(cfg runConfig) error {
 
 	// Apply call-level filters.
 	filterOpts := filter.Options{
-		LinkedID:  cfg.linkedID,
-		Channel:   cfg.channel,
-		Extension: cfg.extension,
+		LinkedID:    cfg.linkedID,
+		Channel:     cfg.channel,
+		Extension:   cfg.extension,
+		HangupCause: cfg.hangupCause,
+	}
+	if cfg.fromStr != "" {
+		t, err := filter.ParseTime(cfg.fromStr)
+		if err != nil {
+			return fmt.Errorf("--from: %w", err)
+		}
+		filterOpts.From = t
+	}
+	if cfg.toStr != "" {
+		t, err := filter.ParseTime(cfg.toStr)
+		if err != nil {
+			return fmt.Errorf("--to: %w", err)
+		}
+		filterOpts.To = t
+	}
+	if cfg.minDurStr != "" {
+		d, err := time.ParseDuration(cfg.minDurStr)
+		if err != nil {
+			return fmt.Errorf("--min-duration: %w", err)
+		}
+		filterOpts.MinDuration = d
+	}
+	if cfg.maxDurStr != "" {
+		d, err := time.ParseDuration(cfg.maxDurStr)
+		if err != nil {
+			return fmt.Errorf("--max-duration: %w", err)
+		}
+		filterOpts.MaxDuration = d
 	}
 	calls = filter.Calls(calls, filterOpts)
 
@@ -244,6 +299,10 @@ func run(cfg runConfig) error {
 		}
 	case "html":
 		if err := render.HTML(out, calls); err != nil {
+			return fmt.Errorf("rendering: %w", err)
+		}
+	case "csv":
+		if err := render.CSV(out, calls); err != nil {
 			return fmt.Errorf("rendering: %w", err)
 		}
 	default:

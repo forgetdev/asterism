@@ -2,33 +2,42 @@
 //
 // There are two levels of filtering:
 //
-//   - Call-level: LinkedID, Channel, Extension — a call that doesn't match is
-//     dropped entirely from the output.
+//   - Call-level: LinkedID, Channel, Extension, From, To, MinDuration,
+//     MaxDuration, HangupCause — a call that doesn't match is dropped entirely.
 //   - Event-level: EventTypes — events within a kept call are further reduced
 //     to only those whose type appears in the list.
 //
 // Filters compose: all call-level predicates must pass for a call to survive.
-// An empty value (empty string / nil slice) means "no restriction on this field".
+// An empty/zero value means "no restriction on this field".
 package filter
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/forgetdev/asterism/internal/model"
+	"github.com/forgetdev/asterism/internal/q850"
 )
 
 // Options controls which calls are included and which events are shown within them.
 type Options struct {
-	LinkedID   string            // keep only the call with this LinkedID
-	Channel    string            // keep only calls containing this channel name (substring match)
-	Extension  string            // keep only calls where any event has this Exten
-	EventTypes []model.EventType // within kept calls, show only these event types (nil = all)
+	LinkedID    string            // keep only the call with this LinkedID
+	Channel     string            // keep only calls containing this channel name (substring)
+	Extension   string            // keep only calls where any event has this Exten
+	From        time.Time         // keep only calls starting at or after this time (zero = no bound)
+	To          time.Time         // keep only calls starting at or before this time (zero = no bound)
+	MinDuration time.Duration     // keep only calls with duration >= this (0 = no minimum)
+	MaxDuration time.Duration     // keep only calls with duration <= this (0 = no maximum)
+	HangupCause string            // keep only calls with this hangup cause — name ("NORMAL_CLEARING") or code ("16")
+	EventTypes  []model.EventType // within kept calls, show only these event types (nil = all)
 }
 
 // Calls applies the call-level predicates in opts and returns matching calls.
 // EventTypes is not applied here — pass the result to Events for that.
 func Calls(calls []model.Call, opts Options) []model.Call {
-	if opts.LinkedID == "" && opts.Channel == "" && opts.Extension == "" {
+	if !opts.hasCallFilter() {
 		return calls
 	}
 	out := make([]model.Call, 0, len(calls))
@@ -40,6 +49,23 @@ func Calls(calls []model.Call, opts Options) []model.Call {
 			continue
 		}
 		if opts.Extension != "" && !callHasExtension(c, opts.Extension) {
+			continue
+		}
+		start := c.StartTime()
+		if !opts.From.IsZero() && start.Before(opts.From) {
+			continue
+		}
+		if !opts.To.IsZero() && start.After(opts.To) {
+			continue
+		}
+		dur := callDuration(c)
+		if opts.MinDuration > 0 && dur < opts.MinDuration {
+			continue
+		}
+		if opts.MaxDuration > 0 && dur > opts.MaxDuration {
+			continue
+		}
+		if opts.HangupCause != "" && !callMatchesHangupCause(c, opts.HangupCause) {
 			continue
 		}
 		out = append(out, c)
@@ -89,6 +115,65 @@ func ParseEventTypes(s string) []model.EventType {
 		}
 	}
 	return out
+}
+
+// ParseTime parses a timestamp string for --from / --to flags. Accepted formats:
+// "2006-01-02 15:04:05", "2006-01-02T15:04:05", "2006-01-02". Returns an error
+// if none match.
+func ParseTime(s string) (time.Time, error) {
+	layouts := []string{
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+		"2006-01-02",
+	}
+	for _, layout := range layouts {
+		if t, err := time.ParseInLocation(layout, s, time.Local); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("cannot parse %q — use YYYY-MM-DD or YYYY-MM-DD HH:MM:SS", s)
+}
+
+// hasCallFilter reports whether any call-level predicate is set.
+func (o Options) hasCallFilter() bool {
+	return o.LinkedID != "" || o.Channel != "" || o.Extension != "" ||
+		!o.From.IsZero() || !o.To.IsZero() ||
+		o.MinDuration != 0 || o.MaxDuration != 0 ||
+		o.HangupCause != ""
+}
+
+// callDuration returns the wall-clock span of a call from CEL start to end.
+// We use CEL times (not CDR) so transferred calls report the full duration.
+func callDuration(c model.Call) time.Duration {
+	return c.EndTime().Sub(c.StartTime())
+}
+
+// callHangupCode extracts the Q.850 cause code from the originating channel's
+// HANGUP event, returning (code, true) or (0, false) if none is found.
+func callHangupCode(c model.Call) (int, bool) {
+	for _, e := range c.Events {
+		if e.Type == model.EventHangup && e.UniqueID == c.LinkedID {
+			if data, err := model.DecodeExtra(e.Extra); err == nil && data.HangupCauseSet {
+				return data.HangupCause, true
+			}
+		}
+	}
+	return 0, false
+}
+
+// callMatchesHangupCause reports whether the call's primary hangup cause matches
+// the user-supplied string. cause may be a numeric code ("16") or a name
+// substring ("NORMAL_CLEARING", "BUSY"). Matching is case-insensitive.
+func callMatchesHangupCause(c model.Call, cause string) bool {
+	code, ok := callHangupCode(c)
+	if !ok {
+		return false
+	}
+	if n, err := strconv.Atoi(cause); err == nil {
+		return code == n
+	}
+	desc := strings.ToLower(q850.Describe(code))
+	return strings.Contains(desc, strings.ToLower(cause))
 }
 
 func callHasChannel(c model.Call, name string) bool {

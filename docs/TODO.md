@@ -210,12 +210,12 @@ be wrong after the transfer point.
 - [ ] Detect registration-related failures (REGISTER SIP dialog parsing)
 
 ### Filter improvements
-- [ ] Filter by date range: `--from` / `--to` (timestamp or relative offset)
-- [ ] Filter by call duration: `--min-duration` / `--max-duration`
-- [ ] Filter by hangup cause: `--hangup-cause NORMAL_CLEARING`
+- [x] Filter by date range: `--from` / `--to` (timestamp or relative offset)
+- [x] Filter by call duration: `--min-duration` / `--max-duration`
+- [x] Filter by hangup cause: `--hangup-cause NORMAL_CLEARING`
 
 ### Export
-- [ ] CSV summary: one row per call with key fields (linkedid, start, duration,
+- [x] CSV summary: one row per call with key fields (linkedid, start, duration,
       result, caller, callee, hangup cause) — good for spreadsheet analysis
 
 ### CEL schema flexibility
@@ -224,8 +224,8 @@ be wrong after the transfer point.
       (moved here from "Future / maybe" — blocking real users)
 
 ### Infrastructure (deferred from v0.0.3 infra block)
-- [ ] GitHub Actions: run `go test ./...` and `go vet` on every PR
-- [ ] Add `golangci-lint` to CI
+- [x] GitHub Actions: run `go test ./...` and `go vet` on every PR
+- [x] Add `golangci-lint` to CI
 - [ ] Build status badge in README
 - [x] `docs/asterisk-setup.md`: how to configure CEL, CDR, and full log
 
