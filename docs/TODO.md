@@ -110,17 +110,17 @@ than reconstruct one. Kept in its own version so it doesn't bloat v0.0.3.
 
 ---
 
-## v0.1.0 — Asterisk full log correlation
+## v0.1.0 — Asterisk full log correlation — done
 
 The full log adds dialplan execution detail and SIP signaling that CEL omits.
 Correlation is by channel name (the linkedid does not appear literally in the
 full log — it shows as `[C-xxxxxxxx]`, so channel name is the join key).
 
-- [ ] Parse full Asterisk log
-- [ ] Extract channel lifecycle from logs
-- [ ] Correlate CEL events with log timestamps
-- [ ] Correlate CEL events with channel names
-- [ ] Show related log lines alongside CEL timeline
+- [x] Parse full Asterisk log
+- [x] Extract channel lifecycle from logs
+- [x] Correlate CEL events with log timestamps
+- [x] Correlate CEL events with channel names
+- [x] Show related log lines alongside CEL timeline
 
 ### Call outcome inference
 - [ ] Automatically classify call outcome
@@ -129,6 +129,10 @@ full log — it shows as `[C-xxxxxxxx]`, so channel name is the join key).
 - [ ] Detect CONGESTION scenarios
 - [ ] Detect NORMAL_CLEARING scenarios
 - [ ] Detect CANCELLED scenarios
+
+Note: call outcome inference from full log alone (no CEL/CDR) is deferred.
+When CEL+CDR are present, outcome is already provided by CDR disposition.
+Full-log-only outcome detection will be added in a future patch.
 
 Example:
 
