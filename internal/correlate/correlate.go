@@ -46,3 +46,35 @@ func ByLinkedID(events []model.Event) []model.Call {
 	})
 	return calls
 }
+
+// AttachCDR enriches calls with their Call Detail Records, joining on UniqueID.
+//
+// A CDR carries no LinkedID, only the UniqueID of the channel it bills. We
+// therefore index every channel UniqueID seen in each call's events and assign
+// a CDR to the call that owns its UniqueID. This catches per-leg CDRs whose
+// UniqueID is a non-originating channel, not just the call's primary record.
+//
+// Like ByLinkedID, this is pure: it mutates the passed calls in place (filling
+// their CDRs slice) and returns them for chaining. CDRs whose UniqueID matches
+// no known channel are dropped — they belong to calls absent from the CEL
+// stream, which asterism cannot render anyway.
+func AttachCDR(calls []model.Call, cdrs []model.CDR) []model.Call {
+	// Map each channel UniqueID to its call's index. The originating channel's
+	// UniqueID equals the LinkedID, but dialed legs have their own UniqueIDs,
+	// so we index all of them.
+	index := make(map[string]int)
+	for i := range calls {
+		for _, e := range calls[i].Events {
+			if e.UniqueID != "" {
+				index[e.UniqueID] = i
+			}
+		}
+	}
+
+	for _, rec := range cdrs {
+		if i, ok := index[rec.UniqueID]; ok {
+			calls[i].CDRs = append(calls[i].CDRs, rec)
+		}
+	}
+	return calls
+}

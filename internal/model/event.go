@@ -50,9 +50,29 @@ type Event struct {
 
 // Call represents a single logical call, grouping all events sharing a LinkedID.
 // Events are kept in arrival order; sorting by Timestamp is done at correlation time.
+//
+// CDRs holds any Call Detail Records correlated to this call (see
+// correlate.AttachCDR). It is empty when no CDR source was provided or none
+// matched. A call may have more than one CDR (one per billable leg); the
+// primary record — the call's top-level summary — is the one whose UniqueID
+// equals the LinkedID, returned by PrimaryCDR.
 type Call struct {
 	LinkedID string
 	Events   []Event
+	CDRs     []CDR
+}
+
+// PrimaryCDR returns the call's top-level CDR — the record whose UniqueID
+// matches the LinkedID (the originating channel) — or nil if no such record
+// was correlated. This is the record whose disposition/duration/billsec
+// describe the call as a whole.
+func (c *Call) PrimaryCDR() *CDR {
+	for i := range c.CDRs {
+		if c.CDRs[i].UniqueID == c.LinkedID {
+			return &c.CDRs[i]
+		}
+	}
+	return nil
 }
 
 // Channels returns the distinct channel names observed in this call.
