@@ -39,6 +39,7 @@ Current capabilities (v0.4.0):
 - [x] Codec negotiation and RTP setup failure diagnostics
 - [x] Aggregate statistics (`--stats`)
 - [x] Rich filters: linkedid, channel, extension, date range, duration, hangup cause
+- [x] Configurable CEL column layout (`--cel-columns`) for non-standard `cel_custom.conf`
 
 ## Requirements
 

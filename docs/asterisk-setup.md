@@ -65,9 +65,20 @@ asterism expects exactly **13 columns** in this order:
 Master.csv => ${eventtype},${eventtime},${calleridnum},${calleridname},${channel},${exten},${context},${uniqueid},${linkedid},${bridgepeer},${appname},${appdata},${eventextra}
 ```
 
-Changing this column layout will break asterism's strict parser. If your
-installation uses a different layout, use `--skip-bad-lines` as a workaround
-until configurable schema support is added.
+If your installation uses a different column order or a subset of columns,
+pass `--cel-columns` with a comma-separated list of the column names in your
+layout:
+
+```bash
+asterism analyze --cel-columns "eventtype,eventtime,channel,uniqueid,linkedid,exten,appname,appdata,eventextra" cel.csv
+```
+
+Valid column names (Asterisk CEL variable names without `${}`):
+`eventtype`, `eventtime`, `calleridnum`, `calleridname`, `channel`, `exten`,
+`context`, `uniqueid`, `linkedid`, `bridgepeer`, `appname`, `appdata`, `eventextra`
+
+Required columns (always needed): `eventtype`, `eventtime`, `channel`,
+`uniqueid`, `linkedid`. All others are optional and default to empty if absent.
 
 ### Verify CEL is working
 

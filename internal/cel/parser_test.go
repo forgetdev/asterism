@@ -3,6 +3,7 @@ package cel
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/forgetdev/asterism/internal/model"
@@ -47,6 +48,76 @@ func TestParseFixture02(t *testing.T) {
 		if ev.LinkedID != expectedLinkedID {
 			t.Errorf("event %d: linkedid = %q, want %q", i, ev.LinkedID, expectedLinkedID)
 		}
+	}
+}
+
+// Custom columns
+
+func TestBuildColIndices_UnknownColumn(t *testing.T) {
+	_, err := buildColIndices([]string{"eventtype", "eventtime", "channel", "uniqueid", "linkedid", "nosuchcol"})
+	if err == nil {
+		t.Fatal("want error for unknown column, got nil")
+	}
+	if !strings.Contains(err.Error(), "nosuchcol") {
+		t.Errorf("error should name the bad column, got: %v", err)
+	}
+}
+
+func TestBuildColIndices_MissingRequired(t *testing.T) {
+	// missing "linkedid"
+	_, err := buildColIndices([]string{"eventtype", "eventtime", "channel", "uniqueid"})
+	if err == nil {
+		t.Fatal("want error for missing required column, got nil")
+	}
+	if !strings.Contains(err.Error(), "linkedid") {
+		t.Errorf("error should name the missing column, got: %v", err)
+	}
+}
+
+func TestBuildColIndices_DuplicateColumn(t *testing.T) {
+	_, err := buildColIndices([]string{"eventtype", "eventtime", "channel", "uniqueid", "linkedid", "eventtype"})
+	if err == nil {
+		t.Fatal("want error for duplicate column, got nil")
+	}
+}
+
+func TestParseWithColumns_CustomOrder(t *testing.T) {
+	// Reordered: linkedid first, then the rest of the required fields
+	cols := []string{"linkedid", "uniqueid", "eventtype", "eventtime", "channel"}
+	// Build one minimal row: linkedid=L1, uniqueid=U1, eventtype=CHAN_START, eventtime=epoch, channel=PJSIP/1001
+	row := "L1,U1,CHAN_START,1700000000,PJSIP/1001\n"
+	events, err := ParseWithColumns(strings.NewReader(row), cols)
+	if err != nil {
+		t.Fatalf("ParseWithColumns error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("want 1 event, got %d", len(events))
+	}
+	ev := events[0]
+	if ev.LinkedID != "L1" {
+		t.Errorf("LinkedID: got %q, want L1", ev.LinkedID)
+	}
+	if ev.UniqueID != "U1" {
+		t.Errorf("UniqueID: got %q, want U1", ev.UniqueID)
+	}
+	if ev.Type != model.EventChanStart {
+		t.Errorf("Type: got %q, want CHAN_START", ev.Type)
+	}
+	if ev.ChannelName != "PJSIP/1001" {
+		t.Errorf("ChannelName: got %q, want PJSIP/1001", ev.ChannelName)
+	}
+}
+
+func TestParse_WrongColumnCount_ErrorMessage(t *testing.T) {
+	// 12-column row (one short of default 13)
+	row := "CHAN_START,1700000000,1001,Alice,PJSIP/1001-001,1001,internal,U1,L1,,,\n"
+	_, err := Parse(strings.NewReader(row))
+	if err == nil {
+		t.Fatal("want error for wrong column count, got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "got 12") || !strings.Contains(msg, "want 13") {
+		t.Errorf("error should report field counts, got: %q", msg)
 	}
 }
 

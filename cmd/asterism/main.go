@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/forgetdev/asterism/internal/cdr"
@@ -49,6 +50,11 @@ Flags:
   --max-duration <dur>      show only calls with duration <= this
   --hangup-cause <cause>    show only calls with this hangup cause
                             accepts a name ("NORMAL_CLEARING") or code ("16")
+  --cel-columns <cols>      comma-separated CEL column names when your cel_custom.conf
+                            differs from the default 13-column layout
+                            default: eventtype,eventtime,calleridnum,calleridname,
+                                     channel,exten,context,uniqueid,linkedid,
+                                     bridgepeer,appname,appdata,eventextra
   --full-log <path>         Asterisk full log to correlate with call timelines
   --skip-bad-lines          skip malformed CSV rows instead of aborting
   --stats                   print aggregate statistics instead of call timelines
@@ -77,23 +83,24 @@ func main() {
 	fs := flag.NewFlagSet("analyze", flag.ExitOnError)
 	fs.Usage = func() { fmt.Fprint(os.Stderr, usage) }
 
-	cdrPath       := fs.String("cdr", "", "")
-	format        := fs.String("format", "text", "")
-	outputPath    := fs.String("output", "", "")
-	noColor       := fs.Bool("no-color", false, "")
-	ladder        := fs.Bool("ladder", false, "")
-	linkedID      := fs.String("linkedid", "", "")
-	channel       := fs.String("channel", "", "")
-	extension     := fs.String("extension", "", "")
-	eventTypeStr  := fs.String("event-type", "", "")
-	fromStr       := fs.String("from", "", "")
-	toStr         := fs.String("to", "", "")
-	minDurStr     := fs.String("min-duration", "", "")
-	maxDurStr     := fs.String("max-duration", "", "")
-	hangupCause   := fs.String("hangup-cause", "", "")
-	skipBad       := fs.Bool("skip-bad-lines", false, "")
-	statsMode     := fs.Bool("stats", false, "")
-	fullLogPath   := fs.String("full-log", "", "")
+	cdrPath        := fs.String("cdr", "", "")
+	format         := fs.String("format", "text", "")
+	outputPath     := fs.String("output", "", "")
+	noColor        := fs.Bool("no-color", false, "")
+	ladder         := fs.Bool("ladder", false, "")
+	linkedID       := fs.String("linkedid", "", "")
+	channel        := fs.String("channel", "", "")
+	extension      := fs.String("extension", "", "")
+	eventTypeStr   := fs.String("event-type", "", "")
+	fromStr        := fs.String("from", "", "")
+	toStr          := fs.String("to", "", "")
+	minDurStr      := fs.String("min-duration", "", "")
+	maxDurStr      := fs.String("max-duration", "", "")
+	hangupCause    := fs.String("hangup-cause", "", "")
+	celColumnsStr  := fs.String("cel-columns", "", "")
+	skipBad        := fs.Bool("skip-bad-lines", false, "")
+	statsMode      := fs.Bool("stats", false, "")
+	fullLogPath    := fs.String("full-log", "", "")
 
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		os.Exit(2)
@@ -125,8 +132,9 @@ func main() {
 		toStr:        *toStr,
 		minDurStr:    *minDurStr,
 		maxDurStr:    *maxDurStr,
-		hangupCause:  *hangupCause,
-		skipBadLines: *skipBad,
+		hangupCause:   *hangupCause,
+		celColumnsStr: *celColumnsStr,
+		skipBadLines:  *skipBad,
 		statsMode:    *statsMode,
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "asterism: %v\n", err)
@@ -149,19 +157,29 @@ type runConfig struct {
 	toStr        string
 	minDurStr    string
 	maxDurStr    string
-	hangupCause  string
-	fullLogPath  string
+	hangupCause   string
+	celColumnsStr string
+	fullLogPath   string
 	skipBadLines bool
 	statsMode    bool
 }
 
 func run(cfg runConfig) error {
 	// Parse CEL.
+	var celCols []string
+	if cfg.celColumnsStr != "" {
+		celCols = splitColumns(cfg.celColumnsStr)
+	}
+
 	var events []model.Event
 	if cfg.skipBadLines {
 		var skipped int
 		var err error
-		events, skipped, err = cel.ParseFileLenient(cfg.celPath)
+		if len(celCols) > 0 {
+			events, skipped, err = cel.ParseFileLenientWithColumns(cfg.celPath, celCols)
+		} else {
+			events, skipped, err = cel.ParseFileLenient(cfg.celPath)
+		}
 		if err != nil {
 			return err
 		}
@@ -170,7 +188,11 @@ func run(cfg runConfig) error {
 		}
 	} else {
 		var err error
-		events, err = cel.ParseFile(cfg.celPath)
+		if len(celCols) > 0 {
+			events, err = cel.ParseFileWithColumns(cfg.celPath, celCols)
+		} else {
+			events, err = cel.ParseFile(cfg.celPath)
+		}
 		if err != nil {
 			return err
 		}
@@ -311,6 +333,18 @@ func run(cfg runConfig) error {
 		}
 	}
 	return nil
+}
+
+func splitColumns(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // isTerminal reports whether f is a character device (i.e. a TTY).

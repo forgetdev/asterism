@@ -231,6 +231,111 @@ be wrong after the transfer point.
 
 ---
 
+## v0.5.0 — robustness and test coverage
+
+### CEL schema flexibility
+The strict 13-column parser is blocking users whose `cel_custom.conf` differs
+from the reference layout. Fix this before the user base grows.
+
+- [x] `--cel-columns <col1,col2,...>`: override the default column order via flag
+- [x] Validate the column list at startup (unknown names → clear error)
+- [x] Update `docs/asterisk-setup.md` with the new flag
+
+### Test coverage
+CI passes but most packages have no tests. Add coverage where bugs are most
+likely to hide.
+
+- [x] Unit tests for `internal/filter` (all predicates: LinkedID, Channel,
+      Extension, From, To, MinDuration, MaxDuration, HangupCause, EventTypes)
+- [x] Unit tests for `internal/render/csv` (column count, transfer field,
+      multi-leg billsec, empty calls)
+- [x] Unit tests for `internal/correlate` (grouping, CDR attachment,
+      multi-leg transfer)
+- [x] Unit tests for `internal/cdr` (strict parse, lenient mode, column count
+      error messages)
+- [ ] Integration / golden-file tests: run `asterism analyze` against each
+      fixture in `testdata/` and compare stdout to a stored expected output.
+      A failing fixture means a regression.
+
+### Better error messages
+- [x] CEL parse errors include row number and field count (not just "wrong column count")
+- [x] CDR parse errors include row number
+
+---
+
+## v0.6.0 — multi-file and batch mode
+
+Production CEL/CDR logs rotate daily. Users need to analyze a week of calls
+without manually concatenating files.
+
+- [ ] Accept multiple positional CEL arguments: `asterism analyze *.csv`
+- [ ] Accept a directory: `asterism analyze --cel-dir /var/log/asterisk/cel-custom/`
+- [ ] Time-window deduplication: same uniqueid appearing in two rotated files
+      is merged, not doubled
+- [ ] Aggregate `--stats` across all files combined
+- [ ] Progress indicator (file count / event count) when processing many files
+
+---
+
+## v0.7.0 — deeper diagnostics
+
+Carry the deferred items from v0.1.0 and v0.2.0 plus queue analysis.
+
+### Deferred from earlier versions
+- [ ] Call outcome inference from full log alone (no CEL/CDR required)
+- [ ] One-way audio detection: parse RTP stats lines from the full log and flag
+      calls where one direction has zero packets
+- [ ] Registration failure detection: parse REGISTER SIP dialogs and surface
+      401/403/timeout responses
+
+### Queue analysis
+Asterisk queue calls emit specific CEL events (AGENT_CONNECT, AGENT_COMPLETE,
+ATTENDEDTRANSFER). A queue-aware view would add:
+- [ ] Detect queue calls by CEL app=Queue events
+- [ ] Show queue wait time (CHAN_START → AGENT_CONNECT)
+- [ ] Show agent who answered and talk time
+- [ ] Show abandoned calls (entered queue, never connected)
+- [ ] Queue summary in `--stats`: average wait, abandon rate
+
+---
+
+## v0.8.0 — HTML report improvements
+
+The current HTML report is a faithful text-to-HTML conversion. This version
+makes it genuinely interactive.
+
+- [ ] In-browser search: filter calls by caller, callee, result, or linkedid
+      without regenerating the report (vanilla JS, no external deps, self-contained)
+- [ ] Clickable call index at the top of the report (jump-to links)
+- [ ] Timeline chart: Gantt-style per-channel bar chart showing bridge/hold
+      periods — rendered as SVG, embedded inline
+- [ ] Print-friendly CSS (media query)
+
+---
+
+## v0.9.0 — pattern and anomaly detection
+
+`asterism scan` subcommand: given a large CEL file (or directory), identify
+calls matching a "suspicious" profile without reading every timeline manually.
+
+- [ ] New subcommand: `asterism scan [flags] <cel-csv-file>`
+- [ ] Built-in patterns (each a flag): `--long-hold <dur>`, `--many-transfers <n>`,
+      `--codec-failure`, `--no-answer-rate` (fraction of calls with NO ANSWER)
+- [ ] Output: list of matching linkedids with a one-line reason each
+- [ ] `--format csv` output for scan results (pipe to spreadsheet)
+
+---
+
+## v1.0.0 — stable release
+
+- [ ] Man page (`asterism.1`) generated from flag definitions
+- [ ] Release binaries via `goreleaser` (Linux amd64/arm64, macOS arm64)
+- [ ] GitHub release workflow: tag push → goreleaser → attach binaries
+- [ ] Stable API promise: no breaking flag changes without a major version bump
+- [ ] CHANGELOG.md covering all versions from v0.0.1
+
+---
+
 ## Future / maybe — NOT scheduled
 
 These represent a change in the project's nature: from a batch analysis tool
