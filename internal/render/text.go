@@ -118,6 +118,8 @@ func (r *textRenderer) colorEventType(t model.EventType) string {
 		code = ansiYellow
 	case model.EventBridgeEnter, model.EventBridgeExit:
 		code = ansiBlue
+	case model.EventBlindTransfer, model.EventAttendedTransfer:
+		code = ansiRed
 	default:
 		return s
 	}
@@ -139,6 +141,9 @@ func (r *textRenderer) renderCall(call model.Call) error {
 	}
 	if callee := callCallee(call); callee != "" {
 		fmt.Fprintf(r.w, "  Callee:       %s\n", callee)
+	}
+	if xfer := callTransfer(call); xfer != "" {
+		fmt.Fprintf(r.w, "  Transfer:     %s\n", xfer)
 	}
 	if bs := callBillSec(call); bs > 0 {
 		fmt.Fprintf(r.w, "  BillSec:      %s\n", bs.Round(time.Second))
@@ -342,17 +347,61 @@ func callCaller(call model.Call) string {
 	return ""
 }
 
-// callCallee returns the callee extension. Prefers CDR.Dst; falls back to
-// extracting the extension from the Dial AppData in the CEL stream.
-// Known limitation: breaks on transfers — the Dial target of the first leg
-// may not be the party that actually answered. Revisit in a later version.
+// callCallee returns the callee extension — the party that ultimately received
+// the call. For transferred calls, this is the transfer target extension, not
+// the first Dial target. Falls back to CDR.Dst then to the first Dial AppData.
 func callCallee(call model.Call) string {
+	// If a blind or attended transfer occurred, the final destination is
+	// the transfer target, not the original dialled extension.
+	if xfer := transferTarget(call); xfer != "" {
+		return xfer
+	}
 	if cdr := call.PrimaryCDR(); cdr != nil && cdr.Dst != "" {
 		return cdr.Dst
 	}
 	for _, e := range call.Events {
 		if e.Type == model.EventAppStart && strings.EqualFold(e.AppName, "Dial") {
 			return dialTarget(e.AppData)
+		}
+	}
+	return ""
+}
+
+// callTransfer returns a human-readable transfer description for the call
+// header (e.g. "1001 → 1002"), or "" if no transfer occurred.
+func callTransfer(call model.Call) string {
+	for _, e := range call.Events {
+		if e.Type != model.EventBlindTransfer && e.Type != model.EventAttendedTransfer {
+			continue
+		}
+		data, err := model.DecodeExtra(e.Extra)
+		if err != nil || data.TransferExten == "" {
+			continue
+		}
+		// The transferring channel's CIDNum is the original callee.
+		from := e.CIDNum
+		if from == "" {
+			from = e.ChannelName
+		}
+		to := data.TransferExten
+		return from + " → " + to
+	}
+	return ""
+}
+
+// transferTarget extracts the final transfer destination extension from CEL
+// BLINDTRANSFER or ATTENDEDTRANSFER events. Returns "" if no transfer happened.
+func transferTarget(call model.Call) string {
+	for _, e := range call.Events {
+		if e.Type != model.EventBlindTransfer && e.Type != model.EventAttendedTransfer {
+			continue
+		}
+		data, err := model.DecodeExtra(e.Extra)
+		if err != nil {
+			continue
+		}
+		if data.TransferExten != "" {
+			return data.TransferExten
 		}
 	}
 	return ""
@@ -378,13 +427,15 @@ func effectiveDuration(call model.Call) time.Duration {
 	return call.EndTime().Sub(call.StartTime())
 }
 
-// callBillSec returns the answered (billable) duration from the primary CDR,
-// or zero when no CDR was attached or the call was never answered.
+// callBillSec returns the total answered (billable) duration for the call.
+// For transferred calls there are multiple CDR legs with the same uniqueid;
+// we sum all of them rather than reporting only the first leg.
 func callBillSec(call model.Call) time.Duration {
-	if cdr := call.PrimaryCDR(); cdr != nil {
-		return cdr.BillSec
+	var total time.Duration
+	for _, cdr := range call.CDRs {
+		total += cdr.BillSec
 	}
-	return 0
+	return total
 }
 
 // primaryHangup finds the HANGUP event for the originating channel (the one
@@ -441,6 +492,17 @@ func formatExtra(ev model.Event) string {
 	case model.EventBridgeEnter, model.EventBridgeExit:
 		if data.BridgeTechnology != "" {
 			parts = append(parts, "tech="+data.BridgeTechnology)
+		}
+	case model.EventBlindTransfer, model.EventAttendedTransfer:
+		if data.TransferExten != "" {
+			dest := data.TransferExten
+			if data.TransferContext != "" {
+				dest += "@" + data.TransferContext
+			}
+			parts = append(parts, "→ "+dest)
+		}
+		if data.Transferee != "" {
+			parts = append(parts, "transferee="+data.Transferee)
 		}
 	}
 

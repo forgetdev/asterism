@@ -1,0 +1,20 @@
+[Jun 12 16:39:45] VERBOSE[2059976][C-00000004] pbx.c: Executing [1001@internal:1] NoOp("PJSIP/1003-00000006", "Chamada para 1001 originada por 1003") in new stack
+[Jun 12 16:39:45] VERBOSE[2059976][C-00000004] pbx.c: Executing [1001@internal:2] Dial("PJSIP/1003-00000006", "PJSIP/1001,30") in new stack
+[Jun 12 16:39:45] VERBOSE[2059976][C-00000004] app_dial.c: Called PJSIP/1001
+[Jun 12 16:39:45] VERBOSE[2059976][C-00000004] app_dial.c: PJSIP/1001-00000007 is ringing
+[Jun 12 16:39:52] VERBOSE[2059976][C-00000004] app_dial.c: PJSIP/1001-00000007 answered PJSIP/1003-00000006
+[Jun 12 16:39:52] VERBOSE[2059987][C-00000004] bridge_channel.c: Channel PJSIP/1001-00000007 joined 'simple_bridge' basic-bridge <826d2256-e3a0-46dd-85c3-9e1c99e0cca5>
+[Jun 12 16:39:52] VERBOSE[2059976][C-00000004] bridge_channel.c: Channel PJSIP/1003-00000006 joined 'simple_bridge' basic-bridge <826d2256-e3a0-46dd-85c3-9e1c99e0cca5>
+[Jun 12 16:40:25] VERBOSE[2059987][C-00000004] bridge_channel.c: Channel PJSIP/1001-00000007 left 'simple_bridge' basic-bridge <826d2256-e3a0-46dd-85c3-9e1c99e0cca5>
+[Jun 12 16:40:25] VERBOSE[2059976][C-00000004] bridge_channel.c: Channel PJSIP/1003-00000006 left 'simple_bridge' basic-bridge <826d2256-e3a0-46dd-85c3-9e1c99e0cca5>
+[Jun 12 16:40:25] VERBOSE[2059976][C-00000004] pbx.c: Executing [1002@internal:1] NoOp("PJSIP/1003-00000006", "Chamada para 1002 originada por 1003") in new stack
+[Jun 12 16:40:25] VERBOSE[2059976][C-00000004] pbx.c: Executing [1002@internal:2] Dial("PJSIP/1003-00000006", "PJSIP/1002,30") in new stack
+[Jun 12 16:40:25] VERBOSE[2059976][C-00000004] app_dial.c: Called PJSIP/1002
+[Jun 12 16:40:26] VERBOSE[2059976][C-00000004] app_dial.c: PJSIP/1002-00000008 is ringing
+[Jun 12 16:40:29] VERBOSE[2059976][C-00000004] app_dial.c: PJSIP/1002-00000008 answered PJSIP/1003-00000006
+[Jun 12 16:40:29] VERBOSE[2060060][C-00000004] bridge_channel.c: Channel PJSIP/1002-00000008 joined 'simple_bridge' basic-bridge <8df2dd52-f041-4d69-974a-745f7c00cf43>
+[Jun 12 16:40:29] VERBOSE[2059976][C-00000004] bridge_channel.c: Channel PJSIP/1003-00000006 joined 'simple_bridge' basic-bridge <8df2dd52-f041-4d69-974a-745f7c00cf43>
+[Jun 12 16:40:38] VERBOSE[2060060][C-00000004] bridge_channel.c: Channel PJSIP/1002-00000008 left 'native_rtp' basic-bridge <8df2dd52-f041-4d69-974a-745f7c00cf43>
+[Jun 12 16:40:38] VERBOSE[2059976][C-00000004] bridge_channel.c: Channel PJSIP/1003-00000006 left 'native_rtp' basic-bridge <8df2dd52-f041-4d69-974a-745f7c00cf43>
+[Jun 12 16:40:38] VERBOSE[2059976][C-00000004] pbx.c: Spawn extension (internal, 1002, 2) exited non-zero on 'PJSIP/1003-00000006'
+

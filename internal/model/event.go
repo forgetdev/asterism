@@ -16,15 +16,17 @@ import "time"
 type EventType string
 
 const (
-	EventChanStart    EventType = "CHAN_START"
-	EventChanEnd      EventType = "CHAN_END"
-	EventAnswer       EventType = "ANSWER"
-	EventHangup       EventType = "HANGUP"
-	EventAppStart     EventType = "APP_START"
-	EventAppEnd       EventType = "APP_END"
-	EventBridgeEnter  EventType = "BRIDGE_ENTER"
-	EventBridgeExit   EventType = "BRIDGE_EXIT"
-	EventLinkedIDEnd  EventType = "LINKEDID_END"
+	EventChanStart        EventType = "CHAN_START"
+	EventChanEnd          EventType = "CHAN_END"
+	EventAnswer           EventType = "ANSWER"
+	EventHangup           EventType = "HANGUP"
+	EventAppStart         EventType = "APP_START"
+	EventAppEnd           EventType = "APP_END"
+	EventBridgeEnter      EventType = "BRIDGE_ENTER"
+	EventBridgeExit       EventType = "BRIDGE_EXIT"
+	EventBlindTransfer    EventType = "BLINDTRANSFER"
+	EventAttendedTransfer EventType = "ATTENDEDTRANSFER"
+	EventLinkedIDEnd      EventType = "LINKEDID_END"
 )
 
 // Event is a single CEL row, parsed into a typed structure.

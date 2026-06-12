@@ -191,6 +191,46 @@ Example:
 
 ---
 
+## v0.4.0 — transfers, diagnostics, and quality-of-life
+
+### Transfer awareness
+The biggest correctness gap in the current analysis. CEL emits
+`ATTENDEDTRANSFER` and `BLINDTRANSFER` events that asterism currently ignores,
+causing transferred calls to appear fragmented and caller/callee detection to
+be wrong after the transfer point.
+
+- [x] Recognise `ATTENDEDTRANSFER` and `BLINDTRANSFER` CEL event types
+- [x] Show transfer event in the timeline with from/to detail
+- [x] Correctly identify caller and callee after a transfer
+- [x] Show transfer target in call header
+
+### Deferred diagnostics (carried from v0.1.0 / v0.2.0)
+- [ ] Call outcome inference from full log alone (no CEL/CDR required)
+- [ ] Detect one-way audio indicators (RTP stats in the full log)
+- [ ] Detect registration-related failures (REGISTER SIP dialog parsing)
+
+### Filter improvements
+- [ ] Filter by date range: `--from` / `--to` (timestamp or relative offset)
+- [ ] Filter by call duration: `--min-duration` / `--max-duration`
+- [ ] Filter by hangup cause: `--hangup-cause NORMAL_CLEARING`
+
+### Export
+- [ ] CSV summary: one row per call with key fields (linkedid, start, duration,
+      result, caller, callee, hangup cause) — good for spreadsheet analysis
+
+### CEL schema flexibility
+- [ ] Configurable CEL column mapping via a simple config flag or file, so
+      users with non-standard `cel_custom.conf` layouts are not locked out
+      (moved here from "Future / maybe" — blocking real users)
+
+### Infrastructure (deferred from v0.0.3 infra block)
+- [ ] GitHub Actions: run `go test ./...` and `go vet` on every PR
+- [ ] Add `golangci-lint` to CI
+- [ ] Build status badge in README
+- [x] `docs/asterisk-setup.md`: how to configure CEL, CDR, and full log
+
+---
+
 ## Future / maybe — NOT scheduled
 
 These represent a change in the project's nature: from a batch analysis tool

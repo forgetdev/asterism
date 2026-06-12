@@ -13,12 +13,16 @@ import "encoding/json"
 // from the JSON. Callers should check presence flags where the distinction
 // between "absent" and "zero" matters (e.g., HangupCause 0 is a valid code).
 type ExtraData struct {
-	HangupCause     int
-	HangupCauseSet  bool
-	HangupSource    string
-	DialStatus      string
-	BridgeID        string
+	HangupCause      int
+	HangupCauseSet   bool
+	HangupSource     string
+	DialStatus       string
+	BridgeID         string
 	BridgeTechnology string
+	// Transfer fields (BLINDTRANSFER / ATTENDEDTRANSFER events).
+	TransferExten  string // target extension, e.g. "1002"
+	TransferContext string // target context, e.g. "internal"
+	Transferee     string // channel being handed off
 }
 
 // rawExtra mirrors the JSON shape Asterisk emits. We unmarshal into this and
@@ -31,6 +35,10 @@ type rawExtra struct {
 	DialStatus       *string `json:"dialstatus"`
 	BridgeID         *string `json:"bridge_id"`
 	BridgeTechnology *string `json:"bridge_technology"`
+	// Transfer fields.
+	TransferExten   *string `json:"extension"`
+	TransferContext *string `json:"context"`
+	Transferee      *string `json:"transferee"`
 }
 
 // DecodeExtra parses an event's Extra string into a structured ExtraData.
@@ -66,6 +74,15 @@ func DecodeExtra(s string) (ExtraData, error) {
 	}
 	if raw.BridgeTechnology != nil {
 		out.BridgeTechnology = *raw.BridgeTechnology
+	}
+	if raw.TransferExten != nil {
+		out.TransferExten = *raw.TransferExten
+	}
+	if raw.TransferContext != nil {
+		out.TransferContext = *raw.TransferContext
+	}
+	if raw.Transferee != nil {
+		out.Transferee = *raw.Transferee
 	}
 	return out, nil
 }
