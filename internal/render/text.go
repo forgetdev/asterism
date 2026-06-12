@@ -36,18 +36,42 @@ func Text(w io.Writer, calls []model.Call) error {
 
 func renderCall(w io.Writer, call model.Call) error {
 	channels := call.Channels()
-	duration := call.EndTime().Sub(call.StartTime())
 
 	fmt.Fprintf(w, "═══════════════════════════════════════════════════════════════════\n")
 	fmt.Fprintf(w, "Call linkedid=%s\n", call.LinkedID)
-	fmt.Fprintf(w, "  Start:    %s\n", call.StartTime().Format("2006-01-02 15:04:05.000"))
-	fmt.Fprintf(w, "  Duration: %s\n", duration.Round(time.Millisecond))
-	fmt.Fprintf(w, "  Channels: %s\n", strings.Join(channels, ", "))
-	fmt.Fprintf(w, "  Events:   %d\n", len(call.Events))
+	fmt.Fprintf(w, "  Start:        %s\n", call.StartTime().Format("2006-01-02 15:04:05.000"))
+	fmt.Fprintf(w, "  Duration:     %s\n", effectiveDuration(call).Round(time.Millisecond))
+	if result := callResult(call); result != "" {
+		fmt.Fprintf(w, "  Result:       %s\n", result)
+	}
+	if caller := callCaller(call); caller != "" {
+		fmt.Fprintf(w, "  Caller:       %s\n", caller)
+	}
+	if callee := callCallee(call); callee != "" {
+		fmt.Fprintf(w, "  Callee:       %s\n", callee)
+	}
+	if bs := callBillSec(call); bs > 0 {
+		fmt.Fprintf(w, "  BillSec:      %s\n", bs.Round(time.Second))
+	}
+	if ev := primaryHangup(call); ev != nil {
+		if data, err := model.DecodeExtra(ev.Extra); err == nil {
+			if data.HangupCauseSet {
+				fmt.Fprintf(w, "  HangupCause:  %s\n", q850.Describe(data.HangupCause))
+			}
+			if data.DialStatus != "" {
+				fmt.Fprintf(w, "  Dialstatus:   %s\n", data.DialStatus)
+			}
+		}
+	}
+	fmt.Fprintf(w, "  Channels:     %s\n", strings.Join(channels, ", "))
+	fmt.Fprintf(w, "  Events:       %d\n", countVisible(call.Events))
 	fmt.Fprintf(w, "───────────────────────────────────────────────────────────────────\n")
 
 	callStart := call.StartTime()
 	for _, ev := range call.Events {
+		if ev.Type == model.EventLinkedIDEnd {
+			continue
+		}
 		renderEvent(w, ev, callStart)
 	}
 	return nil
@@ -95,6 +119,99 @@ func cleanAppData(s string) string {
 		return s[1 : len(s)-1]
 	}
 	return s
+}
+
+// callResult returns the call's disposition from its primary CDR, or empty
+// string when no CDR was attached.
+func callResult(call model.Call) string {
+	if cdr := call.PrimaryCDR(); cdr != nil {
+		return cdr.Disposition
+	}
+	return ""
+}
+
+// callCaller returns the caller extension. Prefers CDR.Src; falls back to
+// the CIDNum of the first CHAN_START event in the CEL stream.
+func callCaller(call model.Call) string {
+	if cdr := call.PrimaryCDR(); cdr != nil && cdr.Src != "" {
+		return cdr.Src
+	}
+	for _, e := range call.Events {
+		if e.Type == model.EventChanStart && e.CIDNum != "" {
+			return e.CIDNum
+		}
+	}
+	return ""
+}
+
+// callCallee returns the callee extension. Prefers CDR.Dst; falls back to
+// extracting the extension from the Dial AppData in the CEL stream.
+// Known limitation: breaks on transfers — the Dial target of the first leg
+// may not be the party that actually answered. Revisit in a later version.
+func callCallee(call model.Call) string {
+	if cdr := call.PrimaryCDR(); cdr != nil && cdr.Dst != "" {
+		return cdr.Dst
+	}
+	for _, e := range call.Events {
+		if e.Type == model.EventAppStart && strings.EqualFold(e.AppName, "Dial") {
+			return dialTarget(e.AppData)
+		}
+	}
+	return ""
+}
+
+// dialTarget extracts the extension from a Dial AppData string like
+// "PJSIP/1001,30". Returns the extension portion (e.g. "1001"), or the
+// full first argument if no technology prefix is present.
+func dialTarget(appData string) string {
+	arg := strings.SplitN(appData, ",", 2)[0]
+	if idx := strings.LastIndex(arg, "/"); idx >= 0 {
+		return arg[idx+1:]
+	}
+	return arg
+}
+
+// effectiveDuration returns the call's duration. Prefers CDR.Duration (whole
+// seconds from the billing backend); falls back to the CEL wall-clock span.
+func effectiveDuration(call model.Call) time.Duration {
+	if cdr := call.PrimaryCDR(); cdr != nil && cdr.Duration > 0 {
+		return cdr.Duration
+	}
+	return call.EndTime().Sub(call.StartTime())
+}
+
+// callBillSec returns the answered (billable) duration from the primary CDR,
+// or zero when no CDR was attached or the call was never answered.
+func callBillSec(call model.Call) time.Duration {
+	if cdr := call.PrimaryCDR(); cdr != nil {
+		return cdr.BillSec
+	}
+	return 0
+}
+
+// primaryHangup finds the HANGUP event for the originating channel (the one
+// whose UniqueID equals the LinkedID). This event carries the final hangup
+// cause and dialstatus for the call as a whole.
+func primaryHangup(call model.Call) *model.Event {
+	for i := range call.Events {
+		e := &call.Events[i]
+		if e.Type == model.EventHangup && e.UniqueID == call.LinkedID {
+			return e
+		}
+	}
+	return nil
+}
+
+// countVisible returns the number of events that will be rendered
+// (i.e. excluding LINKEDID_END, which is filtered out as noise).
+func countVisible(events []model.Event) int {
+	n := 0
+	for _, e := range events {
+		if e.Type != model.EventLinkedIDEnd {
+			n++
+		}
+	}
+	return n
 }
 
 // formatExtra decodes the event's Extra JSON and renders only the fields
