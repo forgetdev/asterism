@@ -20,6 +20,7 @@ import (
 	"github.com/forgetdev/asterism/internal/filter"
 	"github.com/forgetdev/asterism/internal/model"
 	"github.com/forgetdev/asterism/internal/render"
+	"github.com/forgetdev/asterism/internal/stats"
 )
 
 const usage = `asterism - reconstruct Asterisk calls from CEL log files
@@ -37,6 +38,7 @@ Flags:
   --event-type <types>  show only events of these types, comma-separated
                         e.g. HANGUP or APP_START,APP_END
   --skip-bad-lines      skip malformed CSV rows instead of aborting
+  --stats               print aggregate statistics instead of call timelines
 
 Examples:
   asterism analyze cel.csv
@@ -45,6 +47,7 @@ Examples:
   asterism analyze --linkedid 1779999013.2 cel.csv
   asterism analyze --event-type HANGUP cel.csv
   asterism analyze --skip-bad-lines --cdr Master.csv cel.csv
+  asterism analyze --stats --cdr Master.csv cel.csv
 `
 
 func main() {
@@ -64,6 +67,7 @@ func main() {
 	extension    := fs.String("extension", "", "")
 	eventTypeStr := fs.String("event-type", "", "")
 	skipBad      := fs.Bool("skip-bad-lines", false, "")
+	statsMode    := fs.Bool("stats", false, "")
 
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		os.Exit(2)
@@ -89,6 +93,7 @@ func main() {
 		extension:    *extension,
 		eventTypeStr: *eventTypeStr,
 		skipBadLines: *skipBad,
+		statsMode:    *statsMode,
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "asterism: %v\n", err)
 		os.Exit(1)
@@ -105,6 +110,7 @@ type runConfig struct {
 	extension    string
 	eventTypeStr string
 	skipBadLines bool
+	statsMode    bool
 }
 
 func run(cfg runConfig) error {
@@ -168,14 +174,31 @@ func run(cfg runConfig) error {
 	}
 
 	// Render.
+	color := !cfg.noColor && isTerminal(os.Stdout)
+	opts := render.TextOptions{Color: color}
+
+	if cfg.statsMode {
+		r := stats.Compute(calls)
+		switch cfg.format {
+		case "json":
+			if err := render.JSONStats(os.Stdout, r); err != nil {
+				return fmt.Errorf("rendering: %w", err)
+			}
+		default:
+			if err := render.TextStats(os.Stdout, r, opts); err != nil {
+				return fmt.Errorf("rendering: %w", err)
+			}
+		}
+		return nil
+	}
+
 	switch cfg.format {
 	case "json":
 		if err := render.JSON(os.Stdout, calls); err != nil {
 			return fmt.Errorf("rendering: %w", err)
 		}
 	default:
-		color := !cfg.noColor && isTerminal(os.Stdout)
-		if err := render.Text(os.Stdout, calls, render.TextOptions{Color: color}); err != nil {
+		if err := render.Text(os.Stdout, calls, opts); err != nil {
 			return fmt.Errorf("rendering: %w", err)
 		}
 	}

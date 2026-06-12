@@ -96,17 +96,17 @@ Dialstatus: BUSY
 
 ---
 
-## v0.0.5 — statistics
+## v0.0.5 — statistics — done
 
 Statistics is a different mode of operation: aggregate over many calls rather
 than reconstruct one. Kept in its own version so it doesn't bloat v0.0.3.
 
-- [ ] Statistics mode (`--stats`)
-- [ ] Total calls
-- [ ] Answered calls
-- [ ] Failed calls
-- [ ] Busy calls
-- [ ] Average duration
+- [x] Statistics mode (`--stats`)
+- [x] Total calls
+- [x] Answered calls
+- [x] Failed calls
+- [x] Busy calls
+- [x] Average duration
 
 ---
 
