@@ -143,25 +143,25 @@ Reason: Dial timeout reached (30s)
 
 ---
 
-## v0.2.0 — SIP signaling analysis
+## v0.2.0 — SIP signaling analysis — done
 
 Parsing free-form SIP from the log is the hardest parsing in the project.
 Requires verbose logging and `pjsip set logger on` to be active when the call
 was made.
 
-- [ ] Parse SIP dialogs from logs
-- [ ] Parse INVITE transactions
-- [ ] Parse provisional responses (100/180/183)
-- [ ] Parse final responses (200/4xx/5xx/6xx)
-- [ ] Parse BYE/CANCEL flows
-- [ ] Correlate SIP dialogs with CEL channels
+- [x] Parse SIP dialogs from logs
+- [x] Parse INVITE transactions
+- [x] Parse provisional responses (100/180/183)
+- [x] Parse final responses (200/4xx/5xx/6xx)
+- [x] Parse BYE/CANCEL flows
+- [x] Correlate SIP dialogs with CEL channels
 
 ### Diagnostics
-- [ ] Detect codec negotiation issues
-- [ ] Detect RTP setup failures
-- [ ] Detect native_rtp warnings
-- [ ] Detect one-way audio indicators
-- [ ] Detect registration-related failures
+- [x] Detect codec negotiation (codecs from INVITE SDP shown in call header)
+- [x] Detect RTP setup failures (native_rtp WARNING log lines)
+- [x] Detect 4xx/5xx error responses
+- [ ] Detect one-way audio indicators (deferred — requires RTP stats)
+- [ ] Detect registration-related failures (deferred — requires REGISTER dialog)
 
 ---
 

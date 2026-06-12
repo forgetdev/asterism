@@ -13,6 +13,7 @@ import (
 
 	"github.com/forgetdev/asterism/internal/model"
 	"github.com/forgetdev/asterism/internal/q850"
+	"github.com/forgetdev/asterism/internal/sip"
 )
 
 // ANSI color codes used by the text renderer.
@@ -73,6 +74,13 @@ func (r *textRenderer) dim(s string) string {
 		return s
 	}
 	return ansiDim + s + ansiReset
+}
+
+func (r *textRenderer) colorWarn(s string) string {
+	if !r.color {
+		return s
+	}
+	return ansiYellow + s + ansiReset
 }
 
 func (r *textRenderer) colorResult(result string) string {
@@ -145,6 +153,21 @@ func (r *textRenderer) renderCall(call model.Call) error {
 	}
 	fmt.Fprintf(r.w, "  Channels:     %s\n", strings.Join(channels, ", "))
 	fmt.Fprintf(r.w, "  Events:       %d\n", countVisible(call.Events))
+	if len(call.SIPMessages) > 0 {
+		fmt.Fprintf(r.w, "  SIP msgs:     %d", len(call.SIPMessages))
+		if callID := sipCallID(call.SIPMessages); callID != "" {
+			fmt.Fprintf(r.w, "  (Call-ID: %s)", callID)
+		}
+		fmt.Fprintln(r.w)
+		if codecs := sip.Codecs(call.SIPMessages); len(codecs) > 0 {
+			fmt.Fprintf(r.w, "  Codecs:       %s\n", strings.Join(codecs, ", "))
+		}
+	}
+	if warns := sip.Diagnose(call); len(warns) > 0 {
+		for _, w := range warns {
+			fmt.Fprintf(r.w, "  %-14s%s\n", r.colorWarn("! "+w.Category+":"), w.Message)
+		}
+	}
 	fmt.Fprintf(r.w, "%s\n", r.bold("───────────────────────────────────────────────────────────────────"))
 
 	callStart := call.StartTime()
@@ -152,14 +175,14 @@ func (r *textRenderer) renderCall(call model.Call) error {
 	return nil
 }
 
-// renderTimeline interleaves CEL events and full log lines in chronological
-// order. Log lines are shown in a distinct format so they're easy to
-// distinguish from CEL events. LINKEDID_END events are suppressed.
+// renderTimeline interleaves CEL events, full log lines, and SIP messages in
+// chronological order. LINKEDID_END events are suppressed.
 func (r *textRenderer) renderTimeline(call model.Call, callStart time.Time) {
 	type item struct {
 		t      time.Time
 		event  *model.Event
 		logLine *model.LogLine
+		sipMsg  *model.SIPMessage
 	}
 
 	var items []item
@@ -174,10 +197,12 @@ func (r *textRenderer) renderTimeline(call model.Call, callStart time.Time) {
 		l := &call.LogLines[i]
 		items = append(items, item{t: l.Timestamp, logLine: l})
 	}
+	for i := range call.SIPMessages {
+		m := &call.SIPMessages[i]
+		items = append(items, item{t: m.Timestamp, sipMsg: m})
+	}
 
-	// Stable sort: events and log lines at the same second keep their relative
-	// order (CEL has sub-second precision; log lines are second-granular).
-	// Use a simple insertion sort since slices are small and already nearly sorted.
+	// Stable insertion sort — slices are small and already nearly sorted.
 	for i := 1; i < len(items); i++ {
 		for j := i; j > 0 && items[j].t.Before(items[j-1].t); j-- {
 			items[j], items[j-1] = items[j-1], items[j]
@@ -185,10 +210,13 @@ func (r *textRenderer) renderTimeline(call model.Call, callStart time.Time) {
 	}
 
 	for _, it := range items {
-		if it.event != nil {
+		switch {
+		case it.event != nil:
 			r.renderEvent(*it.event, callStart)
-		} else {
+		case it.logLine != nil:
 			r.renderLogLine(*it.logLine, callStart)
+		case it.sipMsg != nil:
+			r.renderSIPMessage(*it.sipMsg, callStart)
 		}
 	}
 }
@@ -205,6 +233,37 @@ func (r *textRenderer) renderLogLine(l model.LogLine, callStart time.Time) {
 		r.dim("LOG "+l.Level),
 		msg,
 	)
+}
+
+// renderSIPMessage prints a single SIP message in the timeline.
+// Format: [+Xs] SIP RX/TX    METHOD or STATUS addr
+func (r *textRenderer) renderSIPMessage(m model.SIPMessage, callStart time.Time) {
+	offset := m.Timestamp.Sub(callStart)
+	dirLabel := "SIP RX"
+	arrow := "from"
+	if m.Direction == model.SIPTx {
+		dirLabel = "SIP TX"
+		arrow = "→"
+	}
+	detail := m.Summary() + " " + arrow + " " + m.RemoteAddr
+	if r.color {
+		detail = ansiCyan + detail + ansiReset
+	}
+	fmt.Fprintf(r.w, "  [%s] %-14s %s\n",
+		r.dim("+"+fmt.Sprintf("%-9s", formatOffset(offset))),
+		r.dim(dirLabel),
+		detail,
+	)
+}
+
+// sipCallID returns the first non-empty SIP Call-ID seen in msgs.
+func sipCallID(msgs []model.SIPMessage) string {
+	for _, m := range msgs {
+		if m.CallID != "" {
+			return m.CallID
+		}
+	}
+	return ""
 }
 
 // renderEvent prints a single event line, formatted with offset from call start.

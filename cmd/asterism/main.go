@@ -21,6 +21,7 @@ import (
 	"github.com/forgetdev/asterism/internal/fulllog"
 	"github.com/forgetdev/asterism/internal/model"
 	"github.com/forgetdev/asterism/internal/render"
+	"github.com/forgetdev/asterism/internal/sip"
 	"github.com/forgetdev/asterism/internal/stats"
 )
 
@@ -172,6 +173,15 @@ func run(cfg runConfig) error {
 			return err
 		}
 		calls = fulllog.AttachLog(calls, logLines)
+
+		// SIP messages come from the same file; parse in a second pass.
+		sipMsgs, err := sip.ParseFile(cfg.fullLogPath, 0)
+		if err != nil {
+			return err
+		}
+		if len(sipMsgs) > 0 {
+			calls = sip.AttachSIP(calls, sipMsgs)
+		}
 	}
 
 	// Apply call-level filters.

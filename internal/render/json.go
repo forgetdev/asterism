@@ -24,18 +24,19 @@ func JSON(w io.Writer, calls []model.Call) error {
 }
 
 type jsonCall struct {
-	LinkedID    string       `json:"linkedid"`
-	Start       string       `json:"start"`
-	DurationMs  float64      `json:"duration_ms"`
-	Result      *string      `json:"result"`
-	Caller      *string      `json:"caller"`
-	Callee      *string      `json:"callee"`
-	BillsecS    *int         `json:"billsec_s"`
-	HangupCause *string      `json:"hangup_cause"`
-	Dialstatus  *string      `json:"dialstatus"`
-	Channels    []string     `json:"channels"`
-	Events      []jsonEvent  `json:"events"`
+	LinkedID    string        `json:"linkedid"`
+	Start       string        `json:"start"`
+	DurationMs  float64       `json:"duration_ms"`
+	Result      *string       `json:"result"`
+	Caller      *string       `json:"caller"`
+	Callee      *string       `json:"callee"`
+	BillsecS    *int          `json:"billsec_s"`
+	HangupCause *string       `json:"hangup_cause"`
+	Dialstatus  *string       `json:"dialstatus"`
+	Channels    []string      `json:"channels"`
+	Events      []jsonEvent   `json:"events"`
 	LogLines    []jsonLogLine `json:"log_lines"`
+	SIPMessages []jsonSIP     `json:"sip_messages"`
 }
 
 type jsonLogLine struct {
@@ -44,6 +45,21 @@ type jsonLogLine struct {
 	CallID   string  `json:"call_id,omitempty"`
 	Source   string  `json:"source"`
 	Message  string  `json:"message"`
+}
+
+type jsonSIP struct {
+	OffsetMs   float64 `json:"offset_ms"`
+	Direction  string  `json:"direction"` // "rx" or "tx"
+	Transport  string  `json:"transport"`
+	RemoteAddr string  `json:"remote_addr"`
+	Method     string  `json:"method,omitempty"`
+	StatusCode int     `json:"status_code,omitempty"`
+	StatusText string  `json:"status_text,omitempty"`
+	CallID     string  `json:"call_id,omitempty"`
+	From       string  `json:"from,omitempty"`
+	To         string  `json:"to,omitempty"`
+	CSeq       string  `json:"cseq,omitempty"`
+	Body       string  `json:"body,omitempty"`
 }
 
 type jsonEvent struct {
@@ -112,6 +128,28 @@ func marshalCall(call model.Call) jsonCall {
 			CallID:   l.CallID,
 			Source:   l.Source,
 			Message:  l.Message,
+		})
+	}
+	jc.SIPMessages = make([]jsonSIP, 0, len(call.SIPMessages))
+	for _, m := range call.SIPMessages {
+		offsetMs := float64(m.Timestamp.Sub(callStart)) / float64(time.Millisecond)
+		dir := "rx"
+		if m.Direction == model.SIPTx {
+			dir = "tx"
+		}
+		jc.SIPMessages = append(jc.SIPMessages, jsonSIP{
+			OffsetMs:   offsetMs,
+			Direction:  dir,
+			Transport:  m.Transport,
+			RemoteAddr: m.RemoteAddr,
+			Method:     m.Method,
+			StatusCode: m.StatusCode,
+			StatusText: m.StatusText,
+			CallID:     m.CallID,
+			From:       m.From,
+			To:         m.To,
+			CSeq:       m.CSeq,
+			Body:       m.Body,
 		})
 	}
 	return jc
