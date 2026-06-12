@@ -63,13 +63,15 @@ type LogLine struct {
 //
 // CDRs holds any Call Detail Records correlated to this call (see
 // correlate.AttachCDR). LogLines holds full log lines correlated by channel
-// name (see fulllog.AttachLog). Both slices are empty when the respective
-// source was not provided.
+// name (see fulllog.AttachLog). SIPMessages holds PJSIP-logged SIP messages
+// correlated by C-callid (see sip.AttachSIP). All slices are empty when the
+// respective source was not provided.
 type Call struct {
-	LinkedID string
-	Events   []Event
-	CDRs     []CDR
-	LogLines []LogLine
+	LinkedID    string
+	Events      []Event
+	CDRs        []CDR
+	LogLines    []LogLine
+	SIPMessages []SIPMessage
 }
 
 // PrimaryCDR returns the call's top-level CDR — the record whose UniqueID

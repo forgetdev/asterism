@@ -1,0 +1,176 @@
+[Jun 12 23:50:00] VERBOSE[2001000][C-00000005] pbx.c: Executing [1001@internal:1] NoOp("PJSIP/1002-00000010", "Call to 1001 from 1002") in new stack
+[Jun 12 23:50:00] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Received SIP request (524 bytes) from UDP:192.168.1.100:5060 --->
+INVITE sip:1001@192.168.1.1 SIP/2.0
+Via: SIP/2.0/UDP 192.168.1.100:5060;rport;branch=z9hG4bKPj1a2b3c4d
+Max-Forwards: 70
+From: "1002" <sip:1002@192.168.1.1>;tag=aabbcc11
+To: <sip:1001@192.168.1.1>
+Contact: <sip:1002@192.168.1.100:5060>
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 1 INVITE
+Allow: PRACK, INVITE, ACK, BYE, CANCEL, UPDATE, NOTIFY, REFER, MESSAGE, OPTIONS
+Content-Type: application/sdp
+Content-Length: 207
+
+v=0
+o=- 1781319000 1 IN IP4 192.168.1.100
+s=asterism-test
+c=IN IP4 192.168.1.100
+t=0 0
+m=audio 10000 RTP/AVP 0 8 101
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16
+a=sendrecv
+<----------->
+[Jun 12 23:50:00] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Transmitting SIP response (181 bytes) to UDP:192.168.1.100:5060 --->
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP 192.168.1.100:5060;rport=5060;received=192.168.1.100;branch=z9hG4bKPj1a2b3c4d
+From: "1002" <sip:1002@192.168.1.1>;tag=aabbcc11
+To: <sip:1001@192.168.1.1>
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 1 INVITE
+Content-Length: 0
+
+<----------->
+[Jun 12 23:50:00] VERBOSE[2001000][C-00000005] pbx.c: Executing [1001@internal:2] Dial("PJSIP/1002-00000010", "PJSIP/1001,30") in new stack
+[Jun 12 23:50:00] VERBOSE[2001000][C-00000005] app_dial.c: Called PJSIP/1001
+[Jun 12 23:50:00] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Transmitting SIP request (524 bytes) to UDP:192.168.1.101:5060 --->
+INVITE sip:1001@192.168.1.101 SIP/2.0
+Via: SIP/2.0/UDP 192.168.1.1:5060;rport;branch=z9hG4bKPj9e8d7c6b
+Max-Forwards: 70
+From: <sip:1002@192.168.1.1>;tag=asteRM-111
+To: <sip:1001@192.168.1.101>
+Contact: <sip:asterisk@192.168.1.1:5060>
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 1 INVITE
+Allow: INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO, PUBLISH, MESSAGE
+Content-Type: application/sdp
+Content-Length: 207
+
+v=0
+o=- 1781319000 1 IN IP4 192.168.1.1
+s=asterism-test
+c=IN IP4 192.168.1.1
+t=0 0
+m=audio 10002 RTP/AVP 0 8 101
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16
+a=sendrecv
+<----------->
+[Jun 12 23:50:00] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Received SIP response (172 bytes) from UDP:192.168.1.101:5060 --->
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP 192.168.1.1:5060;rport=5060;received=192.168.1.1;branch=z9hG4bKPj9e8d7c6b
+From: <sip:1002@192.168.1.1>;tag=asteRM-111
+To: <sip:1001@192.168.1.101>
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 1 INVITE
+Content-Length: 0
+
+<----------->
+[Jun 12 23:50:01] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Received SIP response (208 bytes) from UDP:192.168.1.101:5060 --->
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP 192.168.1.1:5060;rport=5060;received=192.168.1.1;branch=z9hG4bKPj9e8d7c6b
+From: <sip:1002@192.168.1.1>;tag=asteRM-111
+To: <sip:1001@192.168.1.101>;tag=ddeeff22
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 1 INVITE
+Content-Length: 0
+
+<----------->
+[Jun 12 23:50:01] VERBOSE[2001000][C-00000005] app_dial.c: PJSIP/1001-00000011 is ringing
+[Jun 12 23:50:01] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Transmitting SIP response (220 bytes) to UDP:192.168.1.100:5060 --->
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP 192.168.1.100:5060;rport=5060;received=192.168.1.100;branch=z9hG4bKPj1a2b3c4d
+From: "1002" <sip:1002@192.168.1.1>;tag=aabbcc11
+To: <sip:1001@192.168.1.1>;tag=ddeeff22
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 1 INVITE
+Content-Length: 0
+
+<----------->
+[Jun 12 23:50:04] VERBOSE[2001000][C-00000005] app_dial.c: PJSIP/1001-00000011 answered PJSIP/1002-00000010
+[Jun 12 23:50:04] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Received SIP response (512 bytes) from UDP:192.168.1.101:5060 --->
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 192.168.1.1:5060;rport=5060;received=192.168.1.1;branch=z9hG4bKPj9e8d7c6b
+From: <sip:1002@192.168.1.1>;tag=asteRM-111
+To: <sip:1001@192.168.1.101>;tag=ddeeff22
+Contact: <sip:1001@192.168.1.101:5060>
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 1 INVITE
+Content-Type: application/sdp
+Content-Length: 172
+
+v=0
+o=- 1781319000 2 IN IP4 192.168.1.101
+s=asterism-test
+c=IN IP4 192.168.1.101
+t=0 0
+m=audio 10004 RTP/AVP 0 8 101
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=sendrecv
+<----------->
+[Jun 12 23:50:04] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Transmitting SIP response (524 bytes) to UDP:192.168.1.100:5060 --->
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 192.168.1.100:5060;rport=5060;received=192.168.1.100;branch=z9hG4bKPj1a2b3c4d
+From: "1002" <sip:1002@192.168.1.1>;tag=aabbcc11
+To: <sip:1001@192.168.1.1>;tag=ddeeff22
+Contact: <sip:asterisk@192.168.1.1:5060>
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 1 INVITE
+Content-Type: application/sdp
+Content-Length: 172
+
+v=0
+o=- 1781319000 2 IN IP4 192.168.1.1
+s=asterism-test
+c=IN IP4 192.168.1.1
+t=0 0
+m=audio 10002 RTP/AVP 0 8 101
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:101 telephone-event/8000
+a=sendrecv
+<----------->
+[Jun 12 23:50:04] VERBOSE[2001006][C-00000005] bridge_channel.c: Channel PJSIP/1001-00000011 joined 'simple_bridge' basic-bridge <b1c2d3e4-f5a6-7890-abcd-ef1234567890>
+[Jun 12 23:50:04] VERBOSE[2001000][C-00000005] bridge_channel.c: Channel PJSIP/1002-00000010 joined 'simple_bridge' basic-bridge <b1c2d3e4-f5a6-7890-abcd-ef1234567890>
+[Jun 12 23:50:04] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Received SIP request (312 bytes) from UDP:192.168.1.100:5060 --->
+ACK sip:asterisk@192.168.1.1:5060 SIP/2.0
+Via: SIP/2.0/UDP 192.168.1.100:5060;rport;branch=z9hG4bKPj1a2b3c4e
+Max-Forwards: 70
+From: "1002" <sip:1002@192.168.1.1>;tag=aabbcc11
+To: <sip:1001@192.168.1.1>;tag=ddeeff22
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 1 ACK
+Content-Length: 0
+
+<----------->
+[Jun 12 23:50:19] VERBOSE[2001006][C-00000005] bridge_channel.c: Channel PJSIP/1001-00000011 left 'native_rtp' basic-bridge <b1c2d3e4-f5a6-7890-abcd-ef1234567890>
+[Jun 12 23:50:19] VERBOSE[2001000][C-00000005] bridge_channel.c: Channel PJSIP/1002-00000010 left 'native_rtp' basic-bridge <b1c2d3e4-f5a6-7890-abcd-ef1234567890>
+[Jun 12 23:50:19] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Received SIP request (280 bytes) from UDP:192.168.1.101:5060 --->
+BYE sip:asterisk@192.168.1.1:5060 SIP/2.0
+Via: SIP/2.0/UDP 192.168.1.101:5060;rport;branch=z9hG4bKPj5f6a7b8c
+Max-Forwards: 70
+From: <sip:1001@192.168.1.101>;tag=ddeeff22
+To: <sip:1002@192.168.1.1>;tag=asteRM-111
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 2 BYE
+Content-Length: 0
+
+<----------->
+[Jun 12 23:50:19] VERBOSE[2001000][C-00000005] res_pjsip_logger.c: <--- Transmitting SIP response (253 bytes) to UDP:192.168.1.101:5060 --->
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 192.168.1.101:5060;rport=5060;received=192.168.1.101;branch=z9hG4bKPj5f6a7b8c
+From: <sip:1001@192.168.1.101>;tag=ddeeff22
+To: <sip:1002@192.168.1.1>;tag=asteRM-111
+Call-ID: abcd1234-5678-abcd@pbx.local
+CSeq: 2 BYE
+Content-Length: 0
+
+<----------->
+[Jun 12 23:50:19] VERBOSE[2001000][C-00000005] pbx.c: Spawn extension (internal, 1001, 2) exited non-zero on 'PJSIP/1002-00000010'

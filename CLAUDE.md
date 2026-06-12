@@ -26,6 +26,7 @@ go vet ./...
 | `internal/correlate` | Group events into `[]model.Call` by LinkedID; attach CDRs |
 | `internal/model` | Domain types: `Event`, `CDR`, `Call`, `ExtraData` |
 | `internal/q850` | Q.850 cause code → human-readable string |
+| `internal/sip` | Parse PJSIP SIP messages from full log; diagnostics |
 | `internal/render` | Text renderer for call timelines |
 
 ## Key design decisions
@@ -43,4 +44,8 @@ go vet ./...
 
 ## Roadmap
 
-See `docs/TODO.md`. Current version: **v0.0.3**. Next: v0.0.4 (output options, filtering, robustness).
+See `docs/TODO.md`. Current version: **v0.2.0**.
+
+## Claude Code
+
+Run `/compact` when context usage reaches 80%.
