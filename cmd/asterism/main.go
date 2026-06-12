@@ -31,27 +31,30 @@ Usage:
   asterism analyze [flags] <cel-csv-file>
 
 Flags:
-  --cdr <path>          CDR Master.csv to merge disposition/duration/billsec
-  --format text|json    output format (default: text)
-  --no-color            disable ANSI colors in text output
-  --linkedid <id>       show only the call with this linkedid
-  --channel <name>      show only calls containing this channel (substring)
-  --extension <ext>     show only calls with this extension in any event
-  --event-type <types>  show only events of these types, comma-separated
-                        e.g. HANGUP or APP_START,APP_END
-  --full-log <path>     Asterisk full log to correlate with call timelines
-  --skip-bad-lines      skip malformed CSV rows instead of aborting
-  --stats               print aggregate statistics instead of call timelines
+  --cdr <path>             CDR Master.csv to merge disposition/duration/billsec
+  --format text|json|html  output format (default: text)
+  --output <path>          write output to file instead of stdout
+  --no-color               disable ANSI colors in text output
+  --ladder                 add ASCII SIP ladder diagram to text output
+  --linkedid <id>          show only the call with this linkedid
+  --channel <name>         show only calls containing this channel (substring)
+  --extension <ext>        show only calls with this extension in any event
+  --event-type <types>     show only events of these types, comma-separated
+                           e.g. HANGUP or APP_START,APP_END
+  --full-log <path>        Asterisk full log to correlate with call timelines
+  --skip-bad-lines         skip malformed CSV rows instead of aborting
+  --stats                  print aggregate statistics instead of call timelines
 
 Examples:
   asterism analyze cel.csv
   asterism analyze --cdr Master.csv cel.csv
   asterism analyze --format json cel.csv
+  asterism analyze --format html --output report.html --full-log full cel.csv
+  asterism analyze --ladder --full-log full cel.csv
   asterism analyze --linkedid 1779999013.2 cel.csv
   asterism analyze --event-type HANGUP cel.csv
   asterism analyze --skip-bad-lines --cdr Master.csv cel.csv
   asterism analyze --stats --cdr Master.csv cel.csv
-  asterism analyze --full-log /var/log/asterisk/full cel.csv
 `
 
 func main() {
@@ -65,7 +68,9 @@ func main() {
 
 	cdrPath      := fs.String("cdr", "", "")
 	format       := fs.String("format", "text", "")
+	outputPath   := fs.String("output", "", "")
 	noColor      := fs.Bool("no-color", false, "")
+	ladder       := fs.Bool("ladder", false, "")
 	linkedID     := fs.String("linkedid", "", "")
 	channel      := fs.String("channel", "", "")
 	extension    := fs.String("extension", "", "")
@@ -83,8 +88,8 @@ func main() {
 	}
 	celPath := fs.Arg(0)
 
-	if *format != "text" && *format != "json" {
-		fmt.Fprintf(os.Stderr, "asterism: --format must be text or json\n")
+	if *format != "text" && *format != "json" && *format != "html" {
+		fmt.Fprintf(os.Stderr, "asterism: --format must be text, json, or html\n")
 		os.Exit(2)
 	}
 
@@ -93,7 +98,9 @@ func main() {
 		cdrPath:      *cdrPath,
 		fullLogPath:  *fullLogPath,
 		format:       *format,
+		outputPath:   *outputPath,
 		noColor:      *noColor,
+		showLadder:   *ladder,
 		linkedID:     *linkedID,
 		channel:      *channel,
 		extension:    *extension,
@@ -110,7 +117,9 @@ type runConfig struct {
 	celPath      string
 	cdrPath      string
 	format       string
+	outputPath   string
 	noColor      bool
+	showLadder   bool
 	linkedID     string
 	channel      string
 	extension    string
@@ -198,19 +207,30 @@ func run(cfg runConfig) error {
 		calls = filter.Events(calls, types)
 	}
 
+	// Open output destination.
+	out := os.Stdout
+	if cfg.outputPath != "" {
+		f, err := os.Create(cfg.outputPath)
+		if err != nil {
+			return fmt.Errorf("opening output file: %w", err)
+		}
+		defer f.Close()
+		out = f
+	}
+
 	// Render.
-	color := !cfg.noColor && isTerminal(os.Stdout)
-	opts := render.TextOptions{Color: color}
+	color := !cfg.noColor && cfg.outputPath == "" && isTerminal(os.Stdout)
+	opts := render.TextOptions{Color: color, ShowLadder: cfg.showLadder}
 
 	if cfg.statsMode {
 		r := stats.Compute(calls)
 		switch cfg.format {
 		case "json":
-			if err := render.JSONStats(os.Stdout, r); err != nil {
+			if err := render.JSONStats(out, r); err != nil {
 				return fmt.Errorf("rendering: %w", err)
 			}
 		default:
-			if err := render.TextStats(os.Stdout, r, opts); err != nil {
+			if err := render.TextStats(out, r, opts); err != nil {
 				return fmt.Errorf("rendering: %w", err)
 			}
 		}
@@ -219,11 +239,15 @@ func run(cfg runConfig) error {
 
 	switch cfg.format {
 	case "json":
-		if err := render.JSON(os.Stdout, calls); err != nil {
+		if err := render.JSON(out, calls); err != nil {
+			return fmt.Errorf("rendering: %w", err)
+		}
+	case "html":
+		if err := render.HTML(out, calls); err != nil {
 			return fmt.Errorf("rendering: %w", err)
 		}
 	default:
-		if err := render.Text(os.Stdout, calls, opts); err != nil {
+		if err := render.Text(out, calls, opts); err != nil {
 			return fmt.Errorf("rendering: %w", err)
 		}
 	}

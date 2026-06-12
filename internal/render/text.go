@@ -30,7 +30,8 @@ const (
 
 // TextOptions controls text rendering behaviour.
 type TextOptions struct {
-	Color bool // enable ANSI color codes
+	Color      bool // enable ANSI color codes
+	ShowLadder bool // append ASCII SIP ladder diagram after each call's timeline
 }
 
 // Text writes a textual summary of one or more calls to w.
@@ -41,7 +42,7 @@ type TextOptions struct {
 // offset, event type, channel, then key details. Not optimized for machine
 // parsing; use JSON for that.
 func Text(w io.Writer, calls []model.Call, opts TextOptions) error {
-	r := &textRenderer{w: w, color: opts.Color}
+	r := &textRenderer{w: w, color: opts.Color, showLadder: opts.ShowLadder}
 	for i, call := range calls {
 		if i > 0 {
 			if _, err := fmt.Fprintln(w); err != nil {
@@ -58,8 +59,9 @@ func Text(w io.Writer, calls []model.Call, opts TextOptions) error {
 // textRenderer holds the writer and options so they don't need to be threaded
 // through every helper call.
 type textRenderer struct {
-	w     io.Writer
-	color bool
+	w          io.Writer
+	color      bool
+	showLadder bool
 }
 
 func (r *textRenderer) bold(s string) string {
@@ -172,6 +174,15 @@ func (r *textRenderer) renderCall(call model.Call) error {
 
 	callStart := call.StartTime()
 	r.renderTimeline(call, callStart)
+	if r.showLadder {
+		if ladder := Ladder(call, callStart); ladder != "" {
+			fmt.Fprintf(r.w, "%s\n", r.bold("───────────────────────────────────────────────────────────────────"))
+			fmt.Fprintf(r.w, "  SIP Ladder\n")
+			for _, line := range strings.Split(strings.TrimRight(ladder, "\n"), "\n") {
+				fmt.Fprintf(r.w, "  %s\n", line)
+			}
+		}
+	}
 	return nil
 }
 

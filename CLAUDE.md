@@ -44,7 +44,7 @@ go vet ./...
 
 ## Roadmap
 
-See `docs/TODO.md`. Current version: **v0.2.0**.
+See `docs/TODO.md`. Current version: **v0.3.0**.
 
 ## Claude Code
 

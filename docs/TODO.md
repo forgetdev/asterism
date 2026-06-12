@@ -165,18 +165,18 @@ was made.
 
 ---
 
-## v0.3.0 — reporting and visualization
+## v0.3.0 — reporting and visualization — done
 
-- [ ] HTML report output
-- [ ] Timeline visualization
-- [ ] Export individual calls
-- [ ] Export filtered datasets
+- [x] HTML report output (`--format html`)
+- [x] Timeline visualization (timeline rendered inside HTML report)
+- [x] Export individual calls (`--output <path>` + `--linkedid`)
+- [x] Export filtered datasets (`--output <path>` + any filter flag)
 
 ### SIP ladder diagram
-- [ ] Generate SIP ladder diagram
-- [ ] Show call flow visually
-- [ ] Include SIP response codes
-- [ ] Include timing information
+- [x] Generate SIP ladder diagram (`--ladder` flag for text; always shown in HTML)
+- [x] Show call flow visually
+- [x] Include SIP response codes
+- [x] Include timing information
 
 Example:
 
