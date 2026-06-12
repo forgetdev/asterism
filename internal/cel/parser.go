@@ -66,6 +66,50 @@ func ParseFile(path string) ([]model.Event, error) {
 	return Parse(f)
 }
 
+// ParseLenient reads CEL events from r, skipping any row that cannot be parsed
+// (wrong column count, bad timestamp, etc.) instead of returning an error.
+// Returns the parsed events, the number of rows skipped, and any fatal I/O error.
+// Use this for production data where a handful of malformed rows are expected.
+func ParseLenient(r io.Reader) ([]model.Event, int, error) {
+	reader := csv.NewReader(r)
+	reader.FieldsPerRecord = -1 // accept any column count; we check manually
+	reader.LazyQuotes = true    // tolerate bare quotes inside fields
+
+	var events []model.Event
+	skipped := 0
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			skipped++
+			continue
+		}
+		if len(row) != expectedColumns {
+			skipped++
+			continue
+		}
+		ev, err := rowToEvent(row)
+		if err != nil {
+			skipped++
+			continue
+		}
+		events = append(events, ev)
+	}
+	return events, skipped, nil
+}
+
+// ParseFileLenient is a convenience wrapper for ParseLenient.
+func ParseFileLenient(path string) ([]model.Event, int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, 0, fmt.Errorf("cel: opening %s: %w", path, err)
+	}
+	defer f.Close()
+	return ParseLenient(f)
+}
+
 // rowToEvent converts a 13-field CSV row into a typed Event.
 // The timestamp parsing is the most fragile part: Asterisk emits eventtime
 // as a Unix epoch with microseconds (e.g., "1779999013.320140"). We parse
