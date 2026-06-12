@@ -24,17 +24,26 @@ func JSON(w io.Writer, calls []model.Call) error {
 }
 
 type jsonCall struct {
-	LinkedID    string      `json:"linkedid"`
-	Start       string      `json:"start"`
-	DurationMs  float64     `json:"duration_ms"`
-	Result      *string     `json:"result"`
-	Caller      *string     `json:"caller"`
-	Callee      *string     `json:"callee"`
-	BillsecS    *int        `json:"billsec_s"`
-	HangupCause *string     `json:"hangup_cause"`
-	Dialstatus  *string     `json:"dialstatus"`
-	Channels    []string    `json:"channels"`
-	Events      []jsonEvent `json:"events"`
+	LinkedID    string       `json:"linkedid"`
+	Start       string       `json:"start"`
+	DurationMs  float64      `json:"duration_ms"`
+	Result      *string      `json:"result"`
+	Caller      *string      `json:"caller"`
+	Callee      *string      `json:"callee"`
+	BillsecS    *int         `json:"billsec_s"`
+	HangupCause *string      `json:"hangup_cause"`
+	Dialstatus  *string      `json:"dialstatus"`
+	Channels    []string     `json:"channels"`
+	Events      []jsonEvent  `json:"events"`
+	LogLines    []jsonLogLine `json:"log_lines"`
+}
+
+type jsonLogLine struct {
+	OffsetMs float64 `json:"offset_ms"`
+	Level    string  `json:"level"`
+	CallID   string  `json:"call_id,omitempty"`
+	Source   string  `json:"source"`
+	Message  string  `json:"message"`
 }
 
 type jsonEvent struct {
@@ -93,6 +102,17 @@ func marshalCall(call model.Call) jsonCall {
 			continue
 		}
 		jc.Events = append(jc.Events, marshalEvent(ev, callStart))
+	}
+	jc.LogLines = make([]jsonLogLine, 0, len(call.LogLines))
+	for _, l := range call.LogLines {
+		offsetMs := float64(l.Timestamp.Sub(callStart)) / float64(time.Millisecond)
+		jc.LogLines = append(jc.LogLines, jsonLogLine{
+			OffsetMs: offsetMs,
+			Level:    l.Level,
+			CallID:   l.CallID,
+			Source:   l.Source,
+			Message:  l.Message,
+		})
 	}
 	return jc
 }

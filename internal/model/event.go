@@ -48,18 +48,28 @@ type Event struct {
 	Extra       string
 }
 
+// LogLine is a single line from the Asterisk full log, attached to a Call
+// by channel-name correlation (see internal/fulllog).
+type LogLine struct {
+	Timestamp time.Time
+	Level     string // VERBOSE, WARNING, ERROR, NOTICE, DEBUG
+	CallID    string // C-XXXXXXXX header tag from the log line
+	Source    string // source_file.c
+	Message   string
+}
+
 // Call represents a single logical call, grouping all events sharing a LinkedID.
 // Events are kept in arrival order; sorting by Timestamp is done at correlation time.
 //
 // CDRs holds any Call Detail Records correlated to this call (see
-// correlate.AttachCDR). It is empty when no CDR source was provided or none
-// matched. A call may have more than one CDR (one per billable leg); the
-// primary record — the call's top-level summary — is the one whose UniqueID
-// equals the LinkedID, returned by PrimaryCDR.
+// correlate.AttachCDR). LogLines holds full log lines correlated by channel
+// name (see fulllog.AttachLog). Both slices are empty when the respective
+// source was not provided.
 type Call struct {
 	LinkedID string
 	Events   []Event
 	CDRs     []CDR
+	LogLines []LogLine
 }
 
 // PrimaryCDR returns the call's top-level CDR — the record whose UniqueID

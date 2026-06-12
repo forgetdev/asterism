@@ -1,0 +1,10 @@
+[Jun 11 23:51:24] VERBOSE[1959020][C-00000003] pbx.c: Executing [1001@internal:1] NoOp("PJSIP/1002-00000004", "Chamada para 1001 originada por 1002") in new stack
+[Jun 11 23:51:24] VERBOSE[1959020][C-00000003] pbx.c: Executing [1001@internal:2] Dial("PJSIP/1002-00000004", "PJSIP/1001,30") in new stack
+[Jun 11 23:51:24] VERBOSE[1959020][C-00000003] app_dial.c: Called PJSIP/1001
+[Jun 11 23:51:24] VERBOSE[1959020][C-00000003] app_dial.c: PJSIP/1001-00000005 is ringing
+[Jun 11 23:51:28] VERBOSE[1959020][C-00000003] app_dial.c: PJSIP/1001-00000005 answered PJSIP/1002-00000004
+[Jun 11 23:51:28] VERBOSE[1959026][C-00000003] bridge_channel.c: Channel PJSIP/1001-00000005 joined 'simple_bridge' basic-bridge <a7244dcc-ec71-4a17-8c1a-9d4e235600a6>
+[Jun 11 23:51:28] VERBOSE[1959020][C-00000003] bridge_channel.c: Channel PJSIP/1002-00000004 joined 'simple_bridge' basic-bridge <a7244dcc-ec71-4a17-8c1a-9d4e235600a6>
+[Jun 11 23:51:43] VERBOSE[1959026][C-00000003] bridge_channel.c: Channel PJSIP/1001-00000005 left 'native_rtp' basic-bridge <a7244dcc-ec71-4a17-8c1a-9d4e235600a6>
+[Jun 11 23:51:43] VERBOSE[1959020][C-00000003] bridge_channel.c: Channel PJSIP/1002-00000004 left 'native_rtp' basic-bridge <a7244dcc-ec71-4a17-8c1a-9d4e235600a6>
+[Jun 11 23:51:43] VERBOSE[1959020][C-00000003] pbx.c: Spawn extension (internal, 1001, 2) exited non-zero on 'PJSIP/1002-00000004'

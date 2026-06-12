@@ -18,6 +18,7 @@ import (
 	"github.com/forgetdev/asterism/internal/cel"
 	"github.com/forgetdev/asterism/internal/correlate"
 	"github.com/forgetdev/asterism/internal/filter"
+	"github.com/forgetdev/asterism/internal/fulllog"
 	"github.com/forgetdev/asterism/internal/model"
 	"github.com/forgetdev/asterism/internal/render"
 	"github.com/forgetdev/asterism/internal/stats"
@@ -37,6 +38,7 @@ Flags:
   --extension <ext>     show only calls with this extension in any event
   --event-type <types>  show only events of these types, comma-separated
                         e.g. HANGUP or APP_START,APP_END
+  --full-log <path>     Asterisk full log to correlate with call timelines
   --skip-bad-lines      skip malformed CSV rows instead of aborting
   --stats               print aggregate statistics instead of call timelines
 
@@ -48,6 +50,7 @@ Examples:
   asterism analyze --event-type HANGUP cel.csv
   asterism analyze --skip-bad-lines --cdr Master.csv cel.csv
   asterism analyze --stats --cdr Master.csv cel.csv
+  asterism analyze --full-log /var/log/asterisk/full cel.csv
 `
 
 func main() {
@@ -68,6 +71,7 @@ func main() {
 	eventTypeStr := fs.String("event-type", "", "")
 	skipBad      := fs.Bool("skip-bad-lines", false, "")
 	statsMode    := fs.Bool("stats", false, "")
+	fullLogPath  := fs.String("full-log", "", "")
 
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		os.Exit(2)
@@ -86,6 +90,7 @@ func main() {
 	if err := run(runConfig{
 		celPath:      celPath,
 		cdrPath:      *cdrPath,
+		fullLogPath:  *fullLogPath,
 		format:       *format,
 		noColor:      *noColor,
 		linkedID:     *linkedID,
@@ -109,6 +114,7 @@ type runConfig struct {
 	channel      string
 	extension    string
 	eventTypeStr string
+	fullLogPath  string
 	skipBadLines bool
 	statsMode    bool
 }
@@ -157,6 +163,15 @@ func run(cfg runConfig) error {
 			}
 			calls = correlate.AttachCDR(calls, records)
 		}
+	}
+
+	// Parse and attach full log if provided.
+	if cfg.fullLogPath != "" {
+		logLines, err := fulllog.ParseFile(cfg.fullLogPath, 0)
+		if err != nil {
+			return err
+		}
+		calls = fulllog.AttachLog(calls, logLines)
 	}
 
 	// Apply call-level filters.

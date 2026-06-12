@@ -148,13 +148,63 @@ func (r *textRenderer) renderCall(call model.Call) error {
 	fmt.Fprintf(r.w, "%s\n", r.bold("───────────────────────────────────────────────────────────────────"))
 
 	callStart := call.StartTime()
-	for _, ev := range call.Events {
-		if ev.Type == model.EventLinkedIDEnd {
+	r.renderTimeline(call, callStart)
+	return nil
+}
+
+// renderTimeline interleaves CEL events and full log lines in chronological
+// order. Log lines are shown in a distinct format so they're easy to
+// distinguish from CEL events. LINKEDID_END events are suppressed.
+func (r *textRenderer) renderTimeline(call model.Call, callStart time.Time) {
+	type item struct {
+		t      time.Time
+		event  *model.Event
+		logLine *model.LogLine
+	}
+
+	var items []item
+	for i := range call.Events {
+		e := &call.Events[i]
+		if e.Type == model.EventLinkedIDEnd {
 			continue
 		}
-		r.renderEvent(ev, callStart)
+		items = append(items, item{t: e.Timestamp, event: e})
 	}
-	return nil
+	for i := range call.LogLines {
+		l := &call.LogLines[i]
+		items = append(items, item{t: l.Timestamp, logLine: l})
+	}
+
+	// Stable sort: events and log lines at the same second keep their relative
+	// order (CEL has sub-second precision; log lines are second-granular).
+	// Use a simple insertion sort since slices are small and already nearly sorted.
+	for i := 1; i < len(items); i++ {
+		for j := i; j > 0 && items[j].t.Before(items[j-1].t); j-- {
+			items[j], items[j-1] = items[j-1], items[j]
+		}
+	}
+
+	for _, it := range items {
+		if it.event != nil {
+			r.renderEvent(*it.event, callStart)
+		} else {
+			r.renderLogLine(*it.logLine, callStart)
+		}
+	}
+}
+
+// renderLogLine prints a single full log line in the timeline.
+func (r *textRenderer) renderLogLine(l model.LogLine, callStart time.Time) {
+	offset := l.Timestamp.Sub(callStart)
+	msg := l.Message
+	if r.color {
+		msg = ansiDim + msg + ansiReset
+	}
+	fmt.Fprintf(r.w, "  [%s] %-14s %s\n",
+		r.dim("+"+fmt.Sprintf("%-9s", formatOffset(offset))),
+		r.dim("LOG "+l.Level),
+		msg,
+	)
 }
 
 // renderEvent prints a single event line, formatted with offset from call start.
