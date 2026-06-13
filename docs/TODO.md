@@ -301,12 +301,12 @@ Carry the deferred items from v0.1.0 and v0.2.0 plus queue analysis.
 The current HTML report is a faithful text-to-HTML conversion. This version
 makes it genuinely interactive.
 
-- [ ] In-browser search: filter calls by caller, callee, result, or linkedid
+- [x] In-browser search: filter calls by caller, callee, result, or linkedid
       without regenerating the report (vanilla JS, no external deps, self-contained)
-- [ ] Clickable call index at the top of the report (jump-to links)
-- [ ] Timeline chart: Gantt-style per-channel bar chart showing bridge/hold
+- [x] Clickable call index at the top of the report (jump-to links)
+- [x] Timeline chart: Gantt-style per-channel bar chart showing bridge/hold
       periods — rendered as SVG, embedded inline
-- [ ] Print-friendly CSS (media query)
+- [x] Print-friendly CSS (media query)
 
 ---
 

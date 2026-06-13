@@ -26,7 +26,7 @@ This is a personal project in active development. It is not production-ready
 and should not be relied on for compliance, billing, or any decision-making
 process. The output format will change between versions.
 
-Current capabilities (v0.7.1):
+Current capabilities (v0.8.0):
 
 - [x] Parse CEL and CDR CSV into typed events
 - [x] Correlate events by linkedid; attach CDR disposition/billsec
@@ -46,6 +46,10 @@ Current capabilities (v0.7.1):
 - [x] Queue abandoned call detection: `abandoned  exit=TIMEOUT` shown in call header
 - [x] Queue aggregate stats: queue call count, abandon rate, avg wait time in `--stats`
 - [x] Registration failure detection: failed REGISTER attempts shown after call output
+- [x] HTML report: in-browser search/filter (vanilla JS, no external deps, self-contained)
+- [x] HTML report: clickable call index (jump-to anchors for each call block)
+- [x] HTML report: Gantt-style SVG timeline per call (bridge/hold/ringing periods)
+- [x] HTML report: print-friendly CSS (`@media print`)
 
 ## Requirements
 
