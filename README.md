@@ -26,7 +26,7 @@ This is a personal project in active development. It is not production-ready
 and should not be relied on for compliance, billing, or any decision-making
 process. The output format will change between versions.
 
-Current capabilities (v0.8.1):
+Current capabilities (v0.9.0):
 
 - [x] Parse CEL and CDR CSV into typed events
 - [x] Correlate events by linkedid; attach CDR disposition/billsec
@@ -50,6 +50,12 @@ Current capabilities (v0.8.1):
 - [x] HTML report: clickable call index (jump-to anchors for each call block)
 - [x] HTML report: Gantt-style SVG timeline per call (bridge/hold/ringing periods)
 - [x] HTML report: print-friendly CSS (`@media print`)
+- [x] `asterism scan` subcommand: identify suspicious calls without reading every timeline
+- [x] Scan pattern: `--long-hold <dur>` — flag calls where bridge duration exceeds threshold
+- [x] Scan pattern: `--many-transfers <n>` — flag calls with more than n transfer events
+- [x] Scan pattern: `--codec-failure` — flag RTP/codec setup failures (requires `--full-log`)
+- [x] Scan summary: no-answer rate always shown (fraction of unanswered calls)
+- [x] Scan output: `--format csv` for piping results into spreadsheets
 
 ## Requirements
 
@@ -79,6 +85,16 @@ asterism analyze /var/log/asterisk/cel-custom/Master.csv
 
 Output is a textual timeline. Each call is a block grouped by its linkedid,
 with events indented and prefixed by offset from call start.
+
+To scan a large file for suspicious calls without reading every timeline:
+
+```
+asterism scan --long-hold 1h --many-transfers 2 cel.csv
+asterism scan --format csv --long-hold 30m cel.csv > suspicious.csv
+```
+
+The scan subcommand prints a line per matching linkedid and a summary including
+the no-answer rate across all scanned calls.
 
 ## How it works
 

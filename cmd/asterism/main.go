@@ -3,6 +3,7 @@
 // Usage:
 //
 //	asterism analyze [flags] <cel-csv-file> [<cel-csv-file>...]
+//	asterism scan   [flags] <cel-csv-file> [<cel-csv-file>...]
 //
 // CEL is the required input. An optional CDR Master.csv enriches each call's
 // header with disposition/duration/billsec. Full log integration arrives in
@@ -10,6 +11,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"os"
@@ -25,6 +27,7 @@ import (
 	"github.com/forgetdev/asterism/internal/fulllog"
 	"github.com/forgetdev/asterism/internal/model"
 	"github.com/forgetdev/asterism/internal/render"
+	"github.com/forgetdev/asterism/internal/scan"
 	"github.com/forgetdev/asterism/internal/sip"
 	"github.com/forgetdev/asterism/internal/stats"
 )
@@ -34,8 +37,14 @@ const usage = `asterism - reconstruct Asterisk calls from CEL log files
 Usage:
   asterism analyze [flags] <cel-csv-file> [<cel-csv-file>...]
   asterism analyze [flags] --cel-dir <directory>
+  asterism scan    [flags] <cel-csv-file> [<cel-csv-file>...]
+  asterism scan    [flags] --cel-dir <directory>
 
-Flags:
+Subcommands:
+  analyze   Render full call timelines
+  scan      Identify calls matching suspicious patterns
+
+analyze flags:
   --cdr <path>              CDR Master.csv to merge disposition/duration/billsec
   --cel-dir <path>          directory of CEL CSV files to merge (reads all *.csv)
   --format text|json|html|csv  output format (default: text)
@@ -63,7 +72,18 @@ Flags:
   --skip-bad-lines          skip malformed CSV rows instead of aborting
   --stats                   print aggregate statistics instead of call timelines
 
-Examples:
+scan flags:
+  --cdr <path>              CDR Master.csv (used for no-answer rate calculation)
+  --cel-dir <path>          directory of CEL CSV files (reads all *.csv)
+  --cel-columns <cols>      comma-separated CEL column names (see analyze flags)
+  --full-log <path>         Asterisk full log (required for --codec-failure)
+  --skip-bad-lines          skip malformed CSV rows instead of aborting
+  --format text|csv         output format (default: text)
+  --long-hold <dur>         flag calls where bridge duration exceeds threshold (e.g. 1h, 30m)
+  --many-transfers <n>      flag calls with more than n transfer events
+  --codec-failure           flag calls with codec or RTP setup failures (requires --full-log)
+
+analyze examples:
   asterism analyze cel.csv
   asterism analyze monday.csv tuesday.csv wednesday.csv
   asterism analyze --cel-dir /var/log/asterisk/cel-custom/
@@ -78,10 +98,31 @@ Examples:
   asterism analyze --event-type HANGUP cel.csv
   asterism analyze --skip-bad-lines --cdr Master.csv cel.csv
   asterism analyze --stats --cdr Master.csv cel.csv
+
+scan examples:
+  asterism scan --long-hold 1h cel.csv
+  asterism scan --many-transfers 2 cel.csv
+  asterism scan --long-hold 30m --many-transfers 1 --cdr Master.csv cel.csv
+  asterism scan --codec-failure --full-log /var/log/asterisk/full cel.csv
+  asterism scan --format csv --long-hold 10m cel.csv > suspicious.csv
 `
 
 func main() {
-	if len(os.Args) < 2 || os.Args[1] != "analyze" {
+	if len(os.Args) < 2 {
+		fmt.Fprint(os.Stderr, usage)
+		os.Exit(2)
+	}
+
+	switch os.Args[1] {
+	case "analyze":
+		// handled below
+	case "scan":
+		if err := mainScan(); err != nil {
+			fmt.Fprintf(os.Stderr, "asterism: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	default:
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
 	}
@@ -467,4 +508,222 @@ func isTerminal(f *os.File) bool {
 		return false
 	}
 	return fi.Mode()&os.ModeCharDevice != 0
+}
+
+// ---- scan subcommand -------------------------------------------------------
+
+type scanConfig struct {
+	celPaths      []string
+	celDir        string
+	cdrPath       string
+	fullLogPath   string
+	celColumnsStr string
+	skipBadLines  bool
+	format        string
+	longHoldStr   string
+	manyTransfers int // -1 means flag not provided
+	codecFailure  bool
+}
+
+// mainScan parses scan flags and delegates to runScan.
+func mainScan() error {
+	fs := flag.NewFlagSet("scan", flag.ExitOnError)
+	fs.Usage = func() { fmt.Fprint(os.Stderr, usage) }
+
+	cdrPath       := fs.String("cdr", "", "")
+	celDir        := fs.String("cel-dir", "", "")
+	celColumnsStr := fs.String("cel-columns", "", "")
+	fullLogPath   := fs.String("full-log", "", "")
+	skipBad       := fs.Bool("skip-bad-lines", false, "")
+	format        := fs.String("format", "text", "")
+	longHoldStr   := fs.String("long-hold", "", "")
+	manyTransfers := fs.Int("many-transfers", -1, "")
+	codecFailure  := fs.Bool("codec-failure", false, "")
+
+	if err := fs.Parse(os.Args[2:]); err != nil {
+		return err
+	}
+	if fs.NArg() == 0 && *celDir == "" {
+		fmt.Fprint(os.Stderr, usage)
+		os.Exit(2)
+	}
+	if *format != "text" && *format != "csv" {
+		return fmt.Errorf("--format must be text or csv")
+	}
+
+	return runScan(scanConfig{
+		celPaths:      fs.Args(),
+		celDir:        *celDir,
+		cdrPath:       *cdrPath,
+		fullLogPath:   *fullLogPath,
+		celColumnsStr: *celColumnsStr,
+		skipBadLines:  *skipBad,
+		format:        *format,
+		longHoldStr:   *longHoldStr,
+		manyTransfers: *manyTransfers,
+		codecFailure:  *codecFailure,
+	})
+}
+
+// runScan executes the scan pipeline: parse → correlate → scan → render.
+func runScan(cfg scanConfig) error {
+	// Collect CEL file paths.
+	paths := append([]string(nil), cfg.celPaths...)
+	if cfg.celDir != "" {
+		dirPaths, err := celPathsFromDir(cfg.celDir)
+		if err != nil {
+			return err
+		}
+		paths = append(paths, dirPaths...)
+	}
+	if len(paths) == 0 {
+		return fmt.Errorf("no CEL files specified")
+	}
+
+	// Parse CEL.
+	var celCols []string
+	if cfg.celColumnsStr != "" {
+		celCols = splitColumns(cfg.celColumnsStr)
+	}
+
+	multi := len(paths) > 1
+	var allEvents []model.Event
+	totalSkipped := 0
+	for i, path := range paths {
+		if multi {
+			fmt.Fprintf(os.Stderr, "asterism: reading %s (%d/%d)\n",
+				filepath.Base(path), i+1, len(paths))
+		}
+		if cfg.skipBadLines {
+			evs, skipped, err := parseCELLenient(path, celCols)
+			if err != nil {
+				return err
+			}
+			totalSkipped += skipped
+			allEvents = append(allEvents, evs...)
+		} else {
+			evs, err := parseCELStrict(path, celCols)
+			if err != nil {
+				return err
+			}
+			allEvents = append(allEvents, evs...)
+		}
+	}
+	if totalSkipped > 0 {
+		fmt.Fprintf(os.Stderr, "asterism: skipped %d malformed CEL row(s)\n", totalSkipped)
+	}
+
+	if multi {
+		before := len(allEvents)
+		allEvents = deduplicateEvents(allEvents)
+		if dupes := before - len(allEvents); dupes > 0 {
+			fmt.Fprintf(os.Stderr, "asterism: removed %d duplicate event(s)\n", dupes)
+		}
+	}
+
+	if len(allEvents) == 0 {
+		return fmt.Errorf("no events found in input")
+	}
+
+	calls := correlate.ByLinkedID(allEvents)
+
+	// Attach CDR if provided (for no-answer rate).
+	if cfg.cdrPath != "" {
+		if cfg.skipBadLines {
+			records, skipped, err := cdr.ParseFileLenient(cfg.cdrPath)
+			if err != nil {
+				return err
+			}
+			if skipped > 0 {
+				fmt.Fprintf(os.Stderr, "asterism: skipped %d malformed CDR row(s)\n", skipped)
+			}
+			calls = correlate.AttachCDR(calls, records)
+		} else {
+			records, err := cdr.ParseFile(cfg.cdrPath)
+			if err != nil {
+				return err
+			}
+			calls = correlate.AttachCDR(calls, records)
+		}
+	}
+
+	// Attach full log and SIP messages if provided (for --codec-failure).
+	if cfg.fullLogPath != "" {
+		logLines, err := fulllog.ParseFile(cfg.fullLogPath, 0)
+		if err != nil {
+			return err
+		}
+		calls = fulllog.AttachLog(calls, logLines)
+
+		sipMsgs, err := sip.ParseFile(cfg.fullLogPath, 0)
+		if err != nil {
+			return err
+		}
+		if len(sipMsgs) > 0 {
+			calls = sip.AttachSIP(calls, sipMsgs)
+		}
+	}
+
+	// Build scan options.
+	opts := scan.Options{
+		CodecFailure: cfg.codecFailure,
+	}
+	if cfg.manyTransfers >= 0 {
+		n := cfg.manyTransfers
+		opts.ManyTransfers = &n
+	}
+	if cfg.longHoldStr != "" {
+		d, err := time.ParseDuration(cfg.longHoldStr)
+		if err != nil {
+			return fmt.Errorf("--long-hold: %w", err)
+		}
+		opts.LongHold = d
+	}
+
+	matches, summary := scan.Run(calls, opts)
+
+	// Render output.
+	switch cfg.format {
+	case "csv":
+		return renderScanCSV(os.Stdout, matches, summary)
+	default:
+		return renderScanText(os.Stdout, matches, summary)
+	}
+}
+
+// renderScanText writes the default text output for scan results.
+func renderScanText(w *os.File, matches []scan.Match, summary scan.Summary) error {
+	for _, m := range matches {
+		fmt.Fprintf(w, "%-30s  %s\n", m.LinkedID, m.Reason)
+	}
+	if len(matches) > 0 {
+		fmt.Fprintln(w)
+	}
+	noAnswerPct := summary.NoAnswerRate() * 100
+	fmt.Fprintf(w, "Scanned %d calls. %d matched. No-answer rate: %.1f%% (%d/%d).\n",
+		summary.Total, summary.Matched, noAnswerPct, summary.NoAnswer, summary.Total)
+	return nil
+}
+
+// renderScanCSV writes CSV output for scan results.
+// The summary line is written to stderr so that the CSV on stdout is clean
+// for piping into spreadsheets.
+func renderScanCSV(w *os.File, matches []scan.Match, summary scan.Summary) error {
+	cw := csv.NewWriter(w)
+	if err := cw.Write([]string{"linkedid", "reason"}); err != nil {
+		return fmt.Errorf("writing CSV header: %w", err)
+	}
+	for _, m := range matches {
+		if err := cw.Write([]string{m.LinkedID, m.Reason}); err != nil {
+			return fmt.Errorf("writing CSV row: %w", err)
+		}
+	}
+	cw.Flush()
+	if err := cw.Error(); err != nil {
+		return fmt.Errorf("flushing CSV: %w", err)
+	}
+	noAnswerPct := summary.NoAnswerRate() * 100
+	fmt.Fprintf(os.Stderr, "Scanned %d calls. %d matched. No-answer rate: %.1f%% (%d/%d).\n",
+		summary.Total, summary.Matched, noAnswerPct, summary.NoAnswer, summary.Total)
+	return nil
 }

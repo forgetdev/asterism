@@ -315,11 +315,12 @@ makes it genuinely interactive.
 `asterism scan` subcommand: given a large CEL file (or directory), identify
 calls matching a "suspicious" profile without reading every timeline manually.
 
-- [ ] New subcommand: `asterism scan [flags] <cel-csv-file>`
-- [ ] Built-in patterns (each a flag): `--long-hold <dur>`, `--many-transfers <n>`,
-      `--codec-failure`, `--no-answer-rate` (fraction of calls with NO ANSWER)
-- [ ] Output: list of matching linkedids with a one-line reason each
-- [ ] `--format csv` output for scan results (pipe to spreadsheet)
+- [x] New subcommand: `asterism scan [flags] <cel-csv-file>`
+- [x] Built-in patterns (each a flag): `--long-hold <dur>`, `--many-transfers <n>`,
+      `--codec-failure`
+- [x] No-answer rate: always computed and shown in the scan summary line (not a flag)
+- [x] Output: list of matching linkedids with a one-line reason each
+- [x] `--format csv` output for scan results (pipe to spreadsheet)
 
 ---
 

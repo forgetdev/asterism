@@ -7,6 +7,7 @@ Post-mortem Asterisk call analysis tool. Reads CEL and CDR CSV logs, reconstruct
 ```bash
 go build -o asterism ./cmd/asterism
 ./asterism analyze [--cdr <Master.csv>] <cel-csv-file>
+./asterism scan [--long-hold <dur>] [--many-transfers <n>] <cel-csv-file>
 ```
 
 ## Test
@@ -31,6 +32,7 @@ go vet ./...
 | `internal/stats` | Aggregate statistics over a set of calls |
 | `internal/render` | Text, JSON, HTML, CSV renderers for call timelines and stats |
 | `internal/filter` | Predicate filters (linkedid, channel, extension, date, duration…) |
+| `internal/scan` | Pattern-matching engine for `asterism scan`; returns `[]Match` + `Summary` |
 
 ## Key design decisions
 
@@ -48,7 +50,7 @@ go vet ./...
 
 ## Roadmap
 
-See `docs/TODO.md`. Current version: **v0.8.1**.
+See `docs/TODO.md`. Current version: **v0.9.0**.
 
 ## Claude Code
 
