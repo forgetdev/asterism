@@ -17,7 +17,7 @@ builds:
 
 archives:
   - name_template: "asterism_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format: tar.gz
+    formats: [tar.gz]
     files:
       - LICENSE
       - README.md
