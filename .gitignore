@@ -22,3 +22,7 @@ Thumbs.db
 
 # Dependencies (Go modules are tracked, but vendor/ is not)
 vendor/
+
+# Claude Code tooling (local dev only)
+CLAUDE.md
+.claude/
