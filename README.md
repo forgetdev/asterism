@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/forgetdev/asterism/actions/workflows/ci.yml/badge.svg)](https://github.com/forgetdev/asterism/actions/workflows/ci.yml)
 
-Reconstruct Asterisk calls from CEL log files. Built for engineers who debug
+Post-mortem analysis tool for Asterisk calls - parses  CEL/CDR logs and reconstructs call timelines. Built for engineers who debug
 telephony in production and are tired of reading raw `full` logs at 3 a.m.
 
 > *In astronomy, an asterism is a pattern of stars that belong together —
