@@ -33,3 +33,4 @@ release:
     name: asterism
   draft: false
   prerelease: auto
+  mode: replace
