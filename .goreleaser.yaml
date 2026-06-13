@@ -1,0 +1,35 @@
+version: 2
+
+builds:
+  - binary: asterism
+    main: ./cmd/asterism
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
+
+archives:
+  - name_template: "asterism_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format: tar.gz
+    files:
+      - LICENSE
+      - README.md
+      - docs/asterism.1
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+release:
+  github:
+    owner: forgetdev
+    name: asterism
+  draft: false
+  prerelease: auto
