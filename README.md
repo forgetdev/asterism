@@ -10,6 +10,13 @@ telephony in production and are tired of reading raw `full` logs at 3 a.m.
 > This tool finds the asterism in your Asterisk logs: the pattern of
 > events that, together, tell the story of a single call.*
 
+## Stability
+
+From v1.0.0 onward, all CLI flags and subcommand names are stable. Breaking
+changes to flags or subcommand interfaces will not be made without a major
+version bump. Output format changes that add new fields are not considered
+breaking.
+
 ## What it does
 
 `asterism` reads Asterisk's CEL (Channel Event Logging) CSV output and groups
@@ -22,11 +29,10 @@ happened?") rather than live monitoring.
 
 ## Status
 
-This is a personal project in active development. It is not production-ready
-and should not be relied on for compliance, billing, or any decision-making
-process. The output format will change between versions.
+This is a personal project. It is not intended for compliance or billing use.
+As of v1.0.0 the CLI interface is stable (see the Stability section above).
 
-Current capabilities (v0.9.0):
+Current capabilities (v1.0.0):
 
 - [x] Parse CEL and CDR CSV into typed events
 - [x] Correlate events by linkedid; attach CDR disposition/billsec

@@ -324,13 +324,13 @@ calls matching a "suspicious" profile without reading every timeline manually.
 
 ---
 
-## v1.0.0 — stable release
+## v1.0.0 — stable release — done
 
-- [ ] Man page (`asterism.1`) generated from flag definitions
-- [ ] Release binaries via `goreleaser` (Linux amd64/arm64, macOS arm64)
-- [ ] GitHub release workflow: tag push → goreleaser → attach binaries
-- [ ] Stable API promise: no breaking flag changes without a major version bump
-- [ ] CHANGELOG.md covering all versions from v0.0.1
+- [x] Man page (`asterism.1`) generated from flag definitions
+- [x] Release binaries via `goreleaser` (Linux amd64/arm64, macOS arm64)
+- [x] GitHub release workflow: tag push → goreleaser → attach binaries
+- [x] Stable API promise: no breaking flag changes without a major version bump
+- [x] CHANGELOG.md covering all versions from v0.0.1
 
 ---
 
