@@ -334,6 +334,21 @@ calls matching a "suspicious" profile without reading every timeline manually.
 
 ---
 
+## v1.1.0 — test coverage and audio diagnostics
+
+Two long-deferred items that improve confidence in the tool before the user
+base grows further: end-to-end regression protection and a useful new diagnostic
+that has been punted across multiple versions.
+
+- [ ] Integration / golden-file tests: run `asterism analyze` against each
+      fixture in `testdata/` and compare stdout to a stored expected output;
+      a failing fixture means a regression. (Deferred from v0.5.0.)
+- [ ] One-way audio detection: parse RTP stats lines from the full log and flag
+      calls where one direction has zero packets. (Deferred from v0.2.0, v0.4.0,
+      v0.7.0.)
+
+---
+
 ## Future / maybe — NOT scheduled
 
 These represent a change in the project's nature: from a batch analysis tool
