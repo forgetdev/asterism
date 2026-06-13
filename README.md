@@ -26,7 +26,7 @@ This is a personal project in active development. It is not production-ready
 and should not be relied on for compliance, billing, or any decision-making
 process. The output format will change between versions.
 
-Current capabilities (v0.8.0):
+Current capabilities (v0.7.1):
 
 - [x] Parse CEL and CDR CSV into typed events
 - [x] Correlate events by linkedid; attach CDR disposition/billsec
