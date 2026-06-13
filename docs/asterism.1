@@ -1,0 +1,256 @@
+.TH ASTERISM 1 "2026-06-13" "asterism v1.0.0" "User Commands"
+.SH NAME
+asterism \- reconstruct Asterisk calls from CEL log files
+.SH SYNOPSIS
+.B asterism
+\fBanalyze\fR [\fIflags\fR] \fIcel-csv-file\fR [\fIcel-csv-file\fR ...]
+.br
+.B asterism
+\fBanalyze\fR [\fIflags\fR] \fB\-\-cel\-dir\fR \fIdirectory\fR
+.br
+.B asterism
+\fBscan\fR [\fIflags\fR] \fIcel-csv-file\fR [\fIcel-csv-file\fR ...]
+.br
+.B asterism
+\fBscan\fR [\fIflags\fR] \fB\-\-cel\-dir\fR \fIdirectory\fR
+.SH DESCRIPTION
+.PP
+\fBasterism\fR is a post-mortem call analysis tool for Asterisk PBX systems.
+It reads Asterisk CEL (Channel Event Logging) CSV files and, optionally, CDR
+(Call Detail Records) and full log files, then reconstructs a navigable
+timeline of what happened during each call.
+.PP
+Events are grouped by \fIlinkedid\fR — the shared identifier Asterisk assigns
+to all channels that participate in a single call — and sorted by timestamp.
+The output shows which channels were created, which dialplan applications ran,
+when bridges formed and dissolved, transfer events, hangup causes, and
+supporting SIP signaling.
+.PP
+\fBasterism\fR operates on completed log files only. It is a batch analysis
+tool and does not perform live log tailing or real-time monitoring.
+.SH SUBCOMMANDS
+.TP
+.B analyze
+Render full call timelines. Each call is printed as a block with a summary
+header (disposition, caller, callee, duration, hangup cause) followed by a
+chronological list of CEL events with offsets from call start.
+.TP
+.B scan
+Identify calls matching suspicious patterns without printing every timeline.
+Outputs a list of matching \fIlinkedid\fR values with a one-line reason, and
+always prints a summary line including the no-answer rate across all calls.
+.SH OPTIONS
+.SS analyze flags
+.TP
+.BI \-\-cdr " path"
+CDR Master.csv to merge disposition, duration, and billsec into call headers.
+Requires Asterisk CDR with \fIloguniqueid=yes\fR (18-column layout).
+.TP
+.BI \-\-cel\-dir " path"
+Directory of CEL CSV files. All \fB*.csv\fR files are read in alphabetical
+order (which is chronological when files are date-named).
+.TP
+.BI \-\-format " text|json|html|csv"
+Output format. Default: \fBtext\fR.
+.RS
+.TP
+.B text
+Human-readable timeline with ANSI color when stdout is a TTY.
+.TP
+.B json
+Machine-readable JSON array of call objects.
+.TP
+.B html
+Self-contained HTML report with in-browser search, a clickable call index,
+and a Gantt-style SVG timeline per call. No external dependencies.
+.TP
+.B csv
+One row per call: linkedid, start time, duration, result, caller, callee,
+hangup cause. Suitable for spreadsheet import.
+.RE
+.TP
+.BI \-\-output " path"
+Write output to a file instead of stdout.
+.TP
+.B \-\-no\-color
+Disable ANSI color codes in text output.
+.TP
+.B \-\-ladder
+Include an ASCII SIP ladder diagram in text output. The ladder is always
+shown in HTML output regardless of this flag.
+.TP
+.BI \-\-linkedid " id"
+Show only the call whose linkedid matches \fIid\fR exactly.
+.TP
+.BI \-\-channel " name"
+Show only calls that contain \fIname\fR as a substring of any channel name.
+.TP
+.BI \-\-extension " ext"
+Show only calls where \fIext\fR appears in any event's extension field.
+.TP
+.BI \-\-event\-type " types"
+Show only events of the specified type(s). Multiple types are
+comma-separated (e.g. \fBHANGUP\fR or \fBAPP_START,APP_END\fR).
+.TP
+.BI \-\-from " timestamp"
+Show only calls starting at or after \fItimestamp\fR.
+Format: \fBYYYY-MM-DD\fR or \fBYYYY-MM-DD HH:MM:SS\fR.
+.TP
+.BI \-\-to " timestamp"
+Show only calls starting at or before \fItimestamp\fR. Same format as \fB\-\-from\fR.
+.TP
+.BI \-\-min\-duration " dur"
+Show only calls with a total duration greater than or equal to \fIdur\fR
+(e.g. \fB30s\fR, \fB5m\fR, \fB1h30m\fR).
+.TP
+.BI \-\-max\-duration " dur"
+Show only calls with a total duration less than or equal to \fIdur\fR.
+Same format as \fB\-\-min\-duration\fR.
+.TP
+.BI \-\-hangup\-cause " cause"
+Show only calls with the specified hangup cause. Accepts a Q.850 cause name
+(e.g. \fBNORMAL_CLEARING\fR) or a numeric code (e.g. \fB16\fR).
+.TP
+.BI \-\-cel\-columns " cols"
+Comma-separated CEL column names when your \fIcel_custom.conf\fR differs from
+the default 13-column layout. Default order:
+.RS
+.PP
+eventtype, eventtime, calleridnum, calleridname, channel, exten, context,
+uniqueid, linkedid, bridgepeer, appname, appdata, eventextra
+.RE
+.TP
+.BI \-\-full\-log " path"
+Asterisk full log file to correlate with call timelines. When provided,
+dialplan log lines are shown alongside CEL events, SIP dialogs are parsed,
+and registration failure detection is enabled.
+.TP
+.B \-\-skip\-bad\-lines
+Skip malformed CSV rows instead of aborting. A count of skipped rows is
+printed to stderr at the end of the run.
+.TP
+.B \-\-stats
+Print aggregate statistics over all calls instead of individual timelines.
+Statistics include: total calls, answered/failed/busy counts, average
+duration, queue metrics, and no-answer rate.
+.SS scan flags
+.TP
+.BI \-\-cdr " path"
+CDR Master.csv. Used for no-answer rate calculation.
+.TP
+.BI \-\-cel\-dir " path"
+Directory of CEL CSV files (reads all \fB*.csv\fR files).
+.TP
+.BI \-\-cel\-columns " cols"
+Comma-separated CEL column names (see \fBanalyze\fR flags above).
+.TP
+.BI \-\-full\-log " path"
+Asterisk full log (required for \fB\-\-codec\-failure\fR).
+.TP
+.B \-\-skip\-bad\-lines
+Skip malformed CSV rows instead of aborting.
+.TP
+.BI \-\-format " text|csv"
+Output format. Default: \fBtext\fR. \fBcsv\fR writes a two-column file
+(linkedid, reason) to stdout; the summary line is written to stderr.
+.TP
+.BI \-\-long\-hold " dur"
+Flag calls where the bridge duration exceeds \fIdur\fR (e.g. \fB1h\fR, \fB30m\fR).
+.TP
+.BI \-\-many\-transfers " n"
+Flag calls with more than \fIn\fR transfer events (attended or blind).
+.TP
+.B \-\-codec\-failure
+Flag calls with codec negotiation or RTP setup failures. Requires
+\fB\-\-full\-log\fR.
+.SH FILES
+.TP
+.I /var/log/asterisk/cel-custom/Master.csv
+Default CEL output file when using \fIcel_custom.conf\fR with a CSV backend.
+\fBasterism\fR expects a 13-column layout (or a custom layout specified via
+\fB\-\-cel\-columns\fR). See \fIdocs/asterisk-setup.md\fR for the required
+\fIcel_custom.conf\fR configuration.
+.TP
+.I /var/log/asterisk/cdr-csv/Master.csv
+Default CDR output file. Requires \fIloguniqueid=yes\fR in \fIcdr.conf\fR
+to produce the 18-column layout that \fBasterism\fR expects.
+.TP
+.I /var/log/asterisk/full
+Asterisk full verbose log. Enable with \fIverbose=3\fR (or higher) in
+\fIasterisk.conf\fR and run \fIpjsip set logger on\fR to capture SIP messages.
+.SH EXAMPLES
+.PP
+Render call timelines from a CEL file:
+.RS
+.PP
+.B asterism analyze /var/log/asterisk/cel-custom/Master.csv
+.RE
+.PP
+Analyze multiple rotated CEL files at once:
+.RS
+.PP
+.B asterism analyze monday.csv tuesday.csv wednesday.csv
+.RE
+.PP
+Process an entire directory of rotated CEL files:
+.RS
+.PP
+.B asterism analyze --cel-dir /var/log/asterisk/cel-custom/
+.RE
+.PP
+Enrich with CDR (adds disposition, duration, billsec):
+.RS
+.PP
+.B asterism analyze --cdr /var/log/asterisk/cdr-csv/Master.csv cel.csv
+.RE
+.PP
+Generate a self-contained HTML report:
+.RS
+.PP
+.B asterism analyze --format html --output report.html cel.csv
+.RE
+.PP
+Show only a specific call:
+.RS
+.PP
+.B asterism analyze --linkedid 1779999013.2 cel.csv
+.RE
+.PP
+Filter by date range:
+.RS
+.PP
+.B asterism analyze --from "2026-06-12 16:00:00" --to "2026-06-12 17:00:00" cel.csv
+.RE
+.PP
+Filter by minimum duration and hangup cause:
+.RS
+.PP
+.B asterism analyze --min-duration 60s --hangup-cause NORMAL_CLEARING cel.csv
+.RE
+.PP
+Show aggregate statistics:
+.RS
+.PP
+.B asterism analyze --stats --cdr Master.csv cel.csv
+.RE
+.PP
+Scan for long holds and many transfers, output as CSV:
+.RS
+.PP
+.B asterism scan --long-hold 1h --many-transfers 2 --format csv cel.csv > suspicious.csv
+.RE
+.PP
+Scan for codec and RTP failures using the full log:
+.RS
+.PP
+.B asterism scan --codec-failure --full-log /var/log/asterisk/full cel.csv
+.RE
+.SH AUTHOR
+Written by forgetdev.
+.SH SEE ALSO
+.BR asterisk (8),
+.BR asterisk.conf (5)
+.PP
+Project home: \fIhttps://github.com/forgetdev/asterism\fR
+.PP
+Asterisk CEL documentation: \fIhttps://docs.asterisk.org/Configuration/Reporting/Channel-Event-Logging-CEL/\fR
