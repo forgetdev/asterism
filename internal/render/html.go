@@ -310,14 +310,15 @@ func htmlGantt(call model.Call) string {
 		svgRowHeight    = 26
 		svgBarHeight    = 14
 		svgPaddingTop   = 28 // space for X-axis ticks at top
-		svgPaddingBot   = 6
+		svgPaddingBot   = 8
+		svgLegendH      = 20 // space reserved below bars for the legend
 		svgTickCount    = 5
 	)
 
 	nRows := len(channelOrder)
 	chartW := 740 // total SVG width
 	barAreaW := chartW - svgPaddingLeft - svgPaddingRight
-	svgH := svgPaddingTop + nRows*svgRowHeight + svgPaddingBot
+	svgH := svgPaddingTop + nRows*svgRowHeight + svgPaddingBot + svgLegendH
 
 	// Helper: map a time to an X pixel offset within barAreaW.
 	tx := func(t time.Time) int {
@@ -436,8 +437,8 @@ func htmlGantt(call model.Call) string {
 		}
 	}
 
-	// Legend.
-	legendY := svgH - svgPaddingBot - 2
+	// Legend — sits in the svgLegendH band below the last bar row.
+	legendY := svgPaddingTop + nRows*svgRowHeight + svgPaddingBot + svgLegendH - 5
 	legendItems := []struct {
 		color string
 		label string
