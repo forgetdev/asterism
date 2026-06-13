@@ -18,3 +18,18 @@
 [Jun 12 18:39:49] VERBOSE[2078096][C-00000005] bridge_channel.c: Channel PJSIP/1003-00000009 left 'simple_bridge' basic-bridge <58d9e4e8-5084-4d27-8630-dd0cd3a28bf4>
 [Jun 12 18:39:49] VERBOSE[2078096][C-00000005] pbx.c: Spawn extension (internal, 700, 3) exited non-zero on 'PJSIP/1003-00000009'
 
+[Jun 12 23:41:57] VERBOSE[2111820][C-00000008] pbx.c: Executing [700@internal:1] NoOp("PJSIP/1003-00000011", "Chamada entrando na fila suporte - origem 1003") in new stack
+[Jun 12 23:41:57] VERBOSE[2111820][C-00000008] pbx.c: Executing [700@internal:2] Answer("PJSIP/1003-00000011", "") in new stack
+[Jun 12 23:41:57] VERBOSE[2111820][C-00000008] pbx.c: Executing [700@internal:3] Queue("PJSIP/1003-00000011", "suporte,t,,,30") in new stack
+[Jun 12 23:41:57] VERBOSE[2111820][C-00000008] res_musiconhold.c: Started music on hold, class 'default', on channel 'PJSIP/1003-00000011'
+[Jun 12 23:42:04] VERBOSE[2111820][C-00000008] app_queue.c: Called PJSIP/1001
+[Jun 12 23:42:04] VERBOSE[2111820][C-00000008] app_queue.c: PJSIP/1001-00000012 connected line has changed. Saving it until answer for PJSIP/1003-00000011
+[Jun 12 23:42:19] VERBOSE[2111820][C-00000008] app_queue.c: Nobody picked up in 15000 ms
+[Jun 12 23:42:24] VERBOSE[2111820][C-00000008] app_queue.c: Called PJSIP/1001
+[Jun 12 23:42:24] VERBOSE[2111820][C-00000008] app_queue.c: PJSIP/1001-00000013 connected line has changed. Saving it until answer for PJSIP/1003-00000011
+[Jun 12 23:42:27] VERBOSE[2111820][C-00000008] app_queue.c: Nobody picked up in 3000 ms
+[Jun 12 23:42:27] VERBOSE[2111820][C-00000008] res_musiconhold.c: Stopped music on hold on PJSIP/1003-00000011
+[Jun 12 23:42:27] VERBOSE[2111820][C-00000008] pbx.c: Executing [700@internal:4] NoOp("PJSIP/1003-00000011", "Saiu da fila com status: TIMEOUT") in new stack
+[Jun 12 23:42:27] VERBOSE[2111820][C-00000008] pbx.c: Executing [700@internal:5] Hangup("PJSIP/1003-00000011", "") in new stack
+[Jun 12 23:42:27] VERBOSE[2111820][C-00000008] pbx.c: Spawn extension (internal, 700, 5) exited non-zero on 'PJSIP/1003-00000011'
+

@@ -291,8 +291,8 @@ Carry the deferred items from v0.1.0 and v0.2.0 plus queue analysis.
 ### Queue analysis
 - [x] Detect queue calls by CEL App=Queue events
 - [x] Show queue name, wait time, talk time, and agent in call header
-- [ ] Show abandoned calls (entered queue, never connected)
-- [ ] Queue summary in `--stats`: average wait, abandon rate
+- [x] Show abandoned calls (entered queue, never connected)
+- [x] Queue summary in `--stats`: average wait, abandon rate
 
 ---
 

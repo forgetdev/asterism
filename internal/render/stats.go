@@ -32,20 +32,32 @@ func TextStats(w io.Writer, r stats.Result, opts TextOptions) error {
 	}
 	fmt.Fprintf(w, "  Avg duration:    %s\n", r.AvgDuration.Round(time.Millisecond))
 	fmt.Fprintf(w, "  Total duration:  %s\n", r.TotalDuration.Round(time.Second))
+	if r.QueueCalls > 0 {
+		abandonedPct := 100 * float64(r.QueueAbandoned) / float64(r.QueueCalls)
+		fmt.Fprintf(w, "  Queue calls:     %d\n", r.QueueCalls)
+		fmt.Fprintf(w, "  Queue abandoned: %d  (%.1f%%)\n", r.QueueAbandoned, abandonedPct)
+		if r.QueueAvgWaitSec > 0 {
+			avgWait := time.Duration(r.QueueAvgWaitSec * float64(time.Second)).Round(time.Second)
+			fmt.Fprintf(w, "  Queue avg wait:  %s\n", avgWait)
+		}
+	}
 	return nil
 }
 
 // JSONStats writes statistics as a JSON object to w.
 func JSONStats(w io.Writer, r stats.Result) error {
 	out := struct {
-		Total          int     `json:"total"`
-		Answered       int     `json:"answered"`
-		Busy           int     `json:"busy"`
-		NoAnswer       int     `json:"no_answer"`
-		Failed         int     `json:"failed"`
-		Other          int     `json:"other"`
-		AvgDurationMs  float64 `json:"avg_duration_ms"`
+		Total           int     `json:"total"`
+		Answered        int     `json:"answered"`
+		Busy            int     `json:"busy"`
+		NoAnswer        int     `json:"no_answer"`
+		Failed          int     `json:"failed"`
+		Other           int     `json:"other"`
+		AvgDurationMs   float64 `json:"avg_duration_ms"`
 		TotalDurationMs float64 `json:"total_duration_ms"`
+		QueueCalls      int     `json:"queue_calls"`
+		QueueAbandoned  int     `json:"queue_abandoned"`
+		QueueAvgWaitSec float64 `json:"queue_avg_wait_sec"`
 	}{
 		Total:           r.Total,
 		Answered:        r.Answered,
@@ -55,6 +67,9 @@ func JSONStats(w io.Writer, r stats.Result) error {
 		Other:           r.Other,
 		AvgDurationMs:   float64(r.AvgDuration) / float64(time.Millisecond),
 		TotalDurationMs: float64(r.TotalDuration) / float64(time.Millisecond),
+		QueueCalls:      r.QueueCalls,
+		QueueAbandoned:  r.QueueAbandoned,
+		QueueAvgWaitSec: r.QueueAvgWaitSec,
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")

@@ -26,7 +26,7 @@ This is a personal project in active development. It is not production-ready
 and should not be relied on for compliance, billing, or any decision-making
 process. The output format will change between versions.
 
-Current capabilities (v0.4.0):
+Current capabilities (v0.8.0):
 
 - [x] Parse CEL and CDR CSV into typed events
 - [x] Correlate events by linkedid; attach CDR disposition/billsec
@@ -43,6 +43,8 @@ Current capabilities (v0.4.0):
 - [x] Multi-file and batch mode: multiple positional args or `--cel-dir <directory>`
 - [x] Duplicate event detection across overlapping rotated log files
 - [x] Queue call detection: name, wait time, talk time, and agent from CEL + full log
+- [x] Queue abandoned call detection: `abandoned  exit=TIMEOUT` shown in call header
+- [x] Queue aggregate stats: queue call count, abandon rate, avg wait time in `--stats`
 - [x] Registration failure detection: failed REGISTER attempts shown after call output
 
 ## Requirements

@@ -254,6 +254,9 @@ func run(cfg runConfig) error {
 		}
 	}
 
+	// Queue info is derived from CEL events and is always available.
+	calls = fulllog.AttachQueueInfo(calls)
+
 	// Parse and attach full log if provided.
 	var regFailures []model.RegistrationFailure
 	if cfg.fullLogPath != "" {
@@ -262,6 +265,7 @@ func run(cfg runConfig) error {
 			return err
 		}
 		calls = fulllog.AttachLog(calls, logLines)
+		// Re-run queue enrichment so agent names are populated from log lines.
 		calls = fulllog.AttachQueueInfo(calls)
 
 		sipMsgs, err := sip.ParseFile(cfg.fullLogPath, 0)

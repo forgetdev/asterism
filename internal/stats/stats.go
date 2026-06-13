@@ -23,6 +23,14 @@ type Result struct {
 
 	TotalDuration time.Duration
 	AvgDuration   time.Duration
+
+	// Queue metrics. QueueCalls is the number of calls that passed through a
+	// queue. QueueAbandoned is the subset where no agent answered.
+	// QueueAvgWaitSec is the mean wait time across all queue calls that have a
+	// non-zero WaitTime (i.e., where timing data was available).
+	QueueCalls       int
+	QueueAbandoned   int
+	QueueAvgWaitSec  float64
 }
 
 // Compute calculates statistics from the provided calls.
@@ -33,6 +41,9 @@ func Compute(calls []model.Call) Result {
 	r.Total = len(calls)
 
 	var totalDur time.Duration
+	var totalQueueWait time.Duration
+	var queueWaitCount int
+
 	for _, c := range calls {
 		totalDur += effectiveDuration(c)
 		switch outcome(c) {
@@ -47,11 +58,24 @@ func Compute(calls []model.Call) Result {
 		default:
 			r.Other++
 		}
+		if q := c.QueueInfo; q != nil {
+			r.QueueCalls++
+			if q.Abandoned {
+				r.QueueAbandoned++
+			}
+			if q.WaitTime > 0 {
+				totalQueueWait += q.WaitTime
+				queueWaitCount++
+			}
+		}
 	}
 
 	r.TotalDuration = totalDur
 	if r.Total > 0 {
 		r.AvgDuration = totalDur / time.Duration(r.Total)
+	}
+	if queueWaitCount > 0 {
+		r.QueueAvgWaitSec = totalQueueWait.Seconds() / float64(queueWaitCount)
 	}
 	return r
 }

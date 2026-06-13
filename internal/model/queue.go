@@ -6,8 +6,10 @@ import "time"
 // Asterisk queue. Populated by fulllog.AttachQueueInfo when a full log is
 // available; queue name is always populated from CEL if App=Queue is present.
 type QueueInfo struct {
-	Name     string        // queue name, e.g. "suporte"
-	WaitTime time.Duration // caller wait before agent answered (queue enter → answer)
-	TalkTime time.Duration // bridged talk time (bridge enter → bridge exit)
-	Agent    string        // agent extension, e.g. "1001"
+	Name       string        // queue name, e.g. "suporte"
+	WaitTime   time.Duration // caller wait before agent answered (queue enter → answer)
+	TalkTime   time.Duration // bridged talk time (bridge enter → bridge exit)
+	Agent      string        // agent extension, e.g. "1001"
+	ExitStatus string        // queue exit reason: TIMEOUT, FULL, JOINEMPTY, LEAVEEMPTY, ANSWERED, etc.
+	Abandoned  bool          // true when no agent answered (ExitStatus != "ANSWERED" and ExitStatus != "")
 }

@@ -37,10 +37,14 @@ func detectQueueInfo(call model.Call) *model.QueueInfo {
 // detectQueueFromCEL builds a QueueInfo from CEL events alone.
 // It looks for an APP_START with AppName == "Queue" and uses event timestamps
 // to compute wait time and talk time.
+//
+// For abandoned calls (no agent answered), it sets ExitStatus from the
+// originating channel's HANGUP extra field dialstatus and sets Abandoned=true.
 func detectQueueFromCEL(call model.Call) *model.QueueInfo {
 	var queueName string
 	var queueEnter, agentAnswer time.Time
 	var bridgeEnter, bridgeExit time.Time
+	var hangupDialStatus string
 
 	for _, e := range call.Events {
 		switch e.Type {
@@ -62,6 +66,13 @@ func detectQueueFromCEL(call model.Call) *model.QueueInfo {
 			}
 		case model.EventBridgeExit:
 			bridgeExit = e.Timestamp // keep updating; last exit = call end
+		case model.EventHangup:
+			// Capture the originating channel's dialstatus for abandoned detection.
+			if e.UniqueID == call.LinkedID && hangupDialStatus == "" {
+				if data, err := model.DecodeExtra(e.Extra); err == nil && data.DialStatus != "" {
+					hangupDialStatus = data.DialStatus
+				}
+			}
 		}
 	}
 
@@ -76,6 +87,25 @@ func detectQueueFromCEL(call model.Call) *model.QueueInfo {
 	if !bridgeEnter.IsZero() && !bridgeExit.IsZero() && bridgeExit.After(bridgeEnter) {
 		info.TalkTime = bridgeExit.Sub(bridgeEnter).Round(time.Second)
 	}
+
+	// Detect abandoned call: queue was entered but no agent answered.
+	if agentAnswer.IsZero() {
+		info.ExitStatus = hangupDialStatus
+		if info.ExitStatus == "" {
+			// No dialstatus in extra; infer TIMEOUT as the most common queue exit.
+			info.ExitStatus = "TIMEOUT"
+		}
+		info.Abandoned = true
+	} else {
+		// Agent answered — record the exit status from dialstatus if present.
+		// Typically "ANSWER" for answered queue calls; normalise to "ANSWERED".
+		if hangupDialStatus == "ANSWER" {
+			info.ExitStatus = "ANSWERED"
+		} else if hangupDialStatus != "" {
+			info.ExitStatus = hangupDialStatus
+		}
+	}
+
 	return info
 }
 

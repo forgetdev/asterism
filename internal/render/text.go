@@ -176,11 +176,18 @@ func (r *textRenderer) renderCall(call model.Call) error {
 		if q.WaitTime > 0 {
 			parts = append(parts, "wait="+q.WaitTime.String())
 		}
-		if q.TalkTime > 0 {
-			parts = append(parts, "talk="+q.TalkTime.String())
-		}
-		if q.Agent != "" {
-			parts = append(parts, "agent="+q.Agent)
+		if q.Abandoned {
+			parts = append(parts, r.colorWarn("abandoned"))
+			if q.ExitStatus != "" {
+				parts = append(parts, "exit="+q.ExitStatus)
+			}
+		} else {
+			if q.TalkTime > 0 {
+				parts = append(parts, "talk="+q.TalkTime.String())
+			}
+			if q.Agent != "" {
+				parts = append(parts, "agent="+q.Agent)
+			}
 		}
 		fmt.Fprintf(r.w, "  Queue:        %s\n", strings.Join(parts, "  "))
 	}
