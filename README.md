@@ -78,19 +78,44 @@ Current capabilities (v1.0.0):
 
 ## Requirements
 
-- Go 1.22 or newer
 - Asterisk 18, 20, or 21 with CEL configured to write CSV
-  (see `docs/asterisk-setup.md` for the required `cel_custom.conf` layout)
+  (see [`docs/asterisk-setup.md`](docs/asterisk-setup.md) for the required `cel_custom.conf` layout)
 
-## Installation
+## Download
 
+Pre-built binaries are available on the [Releases page](https://github.com/forgetdev/asterism/releases/latest).
+No Go installation required.
+
+```bash
+# Linux x86-64
+curl -L https://github.com/forgetdev/asterism/releases/latest/download/asterism_1.0.0_linux_amd64.tar.gz | tar xz
+sudo mv asterism /usr/local/bin/
+
+# Linux ARM64 (AWS Graviton, Raspberry Pi 4+)
+curl -L https://github.com/forgetdev/asterism/releases/latest/download/asterism_1.0.0_linux_arm64.tar.gz | tar xz
+sudo mv asterism /usr/local/bin/
+
+# macOS Apple Silicon
+curl -L https://github.com/forgetdev/asterism/releases/latest/download/asterism_1.0.0_darwin_arm64.tar.gz | tar xz
+sudo mv asterism /usr/local/bin/
 ```
+
+> **Note:** Replace `1.0.0` with the version shown on the releases page. macOS Intel is not built.
+
+Each archive contains the binary, `README.md`, `docs/asterism.1` (man page), and
+`docs/asterisk-setup.md` (Asterisk configuration guide).
+
+## Build from source
+
+Requires Go 1.22 or newer.
+
+```bash
 go install github.com/forgetdev/asterism/cmd/asterism@latest
 ```
 
 Or clone and build locally:
 
-```
+```bash
 git clone https://github.com/forgetdev/asterism
 cd asterism
 go build -o asterism ./cmd/asterism

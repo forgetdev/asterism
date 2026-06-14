@@ -22,6 +22,7 @@ archives:
       - LICENSE
       - README.md
       - docs/asterism.1
+      - docs/asterisk-setup.md
 
 checksum:
   name_template: "checksums.txt"
